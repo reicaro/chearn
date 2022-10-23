@@ -1,6 +1,10 @@
 This is Chearner, my Software Studio project. Chearner aims to help the user manage their credit cards and maximize benefits.
 
+
+
+
 Features/bugs list (order of priority):
+
 
 Feature: Default apple pay card access (Through Apple, to change it without requiring the user to navigate to card in the wallet)
 
