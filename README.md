@@ -5,7 +5,7 @@ This is Chearner, my Software Studio project. Chearner aims to help the user man
 
 Features/bugs list (order of priority):
 
-Bug: Fix app state needing to be reloaded after state changes (new card added doesn't get included in optimization till reload, new sign it name doesn't automatically reload)
+Bug: Fix app state needing to be reloaded after state changes (new card added doesn't get included in optimization till reload, new sign name doesn't automatically reload)
 
 Bug: Edit transaction breaks
 
