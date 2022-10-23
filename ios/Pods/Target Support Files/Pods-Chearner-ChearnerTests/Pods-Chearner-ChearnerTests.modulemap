@@ -1,0 +1,6 @@
+module Pods_Chearner_ChearnerTests {
+  umbrella header "Pods-Chearner-ChearnerTests-umbrella.h"
+
+  export *
+  module * { export * }
+}
