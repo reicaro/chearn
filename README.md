@@ -9,6 +9,8 @@ Bug: Fix app state needing to be reloaded after state changes (new card added do
 
 Bug: Edit transaction breaks
 
+Bug: Optimization call sometimes has " and breaks, can be fixed with a reload but still trying to figure out source
+
 Feature: Default apple pay card access (Through Apple, to change it without requiring the user to navigate to card in the wallet)
 
 Feature: Geolocation and background activity (Automatically select right card based on store user in in)
