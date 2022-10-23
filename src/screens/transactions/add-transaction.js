@@ -22,7 +22,7 @@ import Button from '../../components/Button';
 
 import { OpenAI } from 'openai-api';
 //Waiting for approval, for now it has to be an env variable
-const apiKey = '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';
+const apiKey = process.env.OPENAI_API_KEY;
 
 const Open = require('openai-api');
 
