@@ -21,7 +21,7 @@ import BackHeader from '../../components/Headers/BackHeader';
 import Button from '../../components/Button';
 
 import { OpenAI } from 'openai-api';
-    //api key of a fresh test account, no payment linked, feel free to use
+//Waiting for approval, for now it has to be an env variable
 const apiKey = process.env.OPENAI_API_KEY;
 
 const Open = require('openai-api');

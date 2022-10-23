@@ -48,10 +48,13 @@ const Transactions = ({navigation}) => {
     const [cards, setCards] = useState([]);
     const [cardl, setCardList] = useState([]);
 
-    useEffect(() => {
-        getCards(setCards);
-        getCardList(setCardList);
-    }, []);
+    React.useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            getCards(setCards);
+            getCardList(setCardList);
+        })
+        return unsubscribe;
+    }, [navigation]);
 
     const __setCardL = (cardl) => {
         setCardList(cardl);
