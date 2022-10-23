@@ -5,6 +5,7 @@ This is Chearner, my Software Studio project. Chearner aims to help the user man
 
 Features/bugs list (order of priority):
 
+Bug: Edit transaction breaks
 
 Feature: Default apple pay card access (Through Apple, to change it without requiring the user to navigate to card in the wallet)
 
