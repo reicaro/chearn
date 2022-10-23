@@ -22,28 +22,35 @@ import Button from '../../components/Button';
 
 import { OpenAI } from 'openai-api';
     //api key of a fresh test account, no payment linked, feel free to use
-const apiKey = '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';
+const apiKey = process.env.OPENAI_API_KEY;
 
 const Open = require('openai-api');
 
 const openai = new Open(apiKey);
 
 async function call_prompt(prompt) {
-    const response = await openai.complete({
-        engine: 'text-davinci-002',
-        prompt: prompt,
-        maxTokens: 100,
-        temperature: 0.7,
-        topP: 1,
-        presencePenalty: 0,
-        frequencyPenalty: 0,
-        bestOf: 1,
-        n: 1,
-        stream: false,
+    return new Promise( async (resolve, reject) => {
+        const response = await openai.complete({
+            engine: 'text-davinci-002',
+            prompt: prompt,
+            maxTokens: 100,
+            temperature: 0.7,
+            topP: 1,
+            presencePenalty: 0,
+            frequencyPenalty: 0,
+            bestOf: 1,
+            n: 1,
+            stream: false,
+        });
+        if(response){
+            let resp = (response.data['choices'][0]['text']).replace( /^\D+/g, '');
+            resolve(resp);
+        } else {
+            reject('error')
+        }
     });
-    let resp = (response.data['choices'][0]['text']).replace( /^\D+/g, '');
-    return resp;
 }
+
 
 function detColor(num) {
     if (num[0] == 4) {
@@ -81,7 +88,7 @@ const AddTransaction = ({navigation, route}) => {
             getCardList(setCardList);
             getCards(setCards);
         }
-    });
+    }, []);
 
     // Insert Transaction
     const __insert = () => {

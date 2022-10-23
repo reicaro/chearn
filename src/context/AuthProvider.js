@@ -65,7 +65,7 @@ function AuthProvider({children}) {
         // Create Card & Transactions Tables
         createTransactionsTable();
         createCardTable();
-        dispatch({type: 'SIGN_IN', user: jsonUser});
+        dispatch({type: 'SIGN_IN', user: JSON.parse(jsonUser)});
       },
       // Sign Out
       signOut: async () => {
