@@ -43,7 +43,7 @@ async function call_prompt(prompt) {
             stream: false,
         });
         if(response){
-            let resp = (response.data['choices'][0]['text']).replace( /^\D+/g, '');
+            let resp = (response.data['choices'][0]['text']).match( /\d+/)[0];
             resolve(resp);
         } else {
             reject('error')
@@ -130,6 +130,7 @@ const AddTransaction = ({navigation, route}) => {
         }
         let cat = await call_prompt(`Given this dictionary: 1:Airlines/Flights, 2:Office Supply Stores, 3:Car & Car rentals, 4:Department and Specialty Stores, 5:Grocery and Drug stores, 6:Dining and Entertainment, 8:Gas Stations, 9:Home Improvement Stores, 10:Hotels, 11:Internet, Cable, and Phone Services, 12:Travel Purchases, 14:Restaurants, 16:Supermarkets, 17:Utilities, which number does ${String(place)} fit? Return a single number`);
         for (k in cards) {
+            console.log(rewards[cards[k]['type']]);
             for (p in rewards[cards[k]['type']]) {
                 console.log('curr = ' + rewards[cards[k]['type']][p]);
                 console.log('cat = ' + cat);
