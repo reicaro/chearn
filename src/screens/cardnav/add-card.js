@@ -35,13 +35,13 @@ const AddCard = ({navigation, route}) => {
     // Insert Card
     const __insert = () => {
         if (num[0] == 4) {
-            c = 'Visa';
+            var c = 'Visa';
         } else if (num[0] == 5) {
-            c = 'Mastercard';
+        var c = 'Mastercard';
         } else if (num[0] == 3) {
-            c = 'American Express';
+            var c = 'American Express';
         } else if (num[0] == 6) {
-            c = 'Discover';
+            var c = 'Discover';
         } else {
             console.log(num);
         }

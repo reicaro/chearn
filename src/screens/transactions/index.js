@@ -67,7 +67,7 @@ const Transactions = ({navigation}) => {
                 <TouchableOpacity
                     activeOpacity={0.7}
                     style={styles.iconContainer}
-                    onPress={() => {[navigation.navigate(routes.AddTransaction), console.log(cards), __setCardL(cards)]}}>
+                    onPress={() => {[navigation.navigate(routes.AddTransaction, {cards: cards}), __setCardL(cards)]}}>
                         <Icon name="plus" color={Colors.BLUE_DARK} size={15} />
                 </TouchableOpacity>
             </View>

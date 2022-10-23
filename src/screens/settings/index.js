@@ -32,42 +32,12 @@ const Settings = ({navigation}) => {
         getCurrency(setCurrency);
     }, []);
 
-    // Toggle Currency Modal
-    const __toggleCurrencyModal = () => {
-        setCurrencyModal(!currencyModal);
-    };
-
-    // Change Currency
-    const __changeCurrency = (currency) => {
-        setCurrency(currency);
-        storeCurrency(currency);
-        __toggleCurrencyModal();
-    };
-
     const __signOut = () => {
         authContext.signOut();
     }
 
     return (
         <View style={{flex: 1}}>
-            {/* Currency Modal */}
-            <Modal 
-                isVisible={currencyModal} >
-                    <ScrollView style={styles.modalContainer} showsVerticalScrollIndicator={false} >
-                        {currencies.map((item, index) => (
-                            <View key={index} >
-                                {index != 0 ?
-                                    <Bar padding={0.2} color={Colors.BLUE_THIN} /> 
-                                : null }
-                                <Pressable style={styles.rowContainer} onPress={() => __changeCurrency(item)} >
-                                    <Text style={[Typography.BODY, {color: Colors.BLUE_DARK}]}>{item.name}</Text>
-                                    <Text style={[Typography.TAGLINE, {color: Colors.BLUE_DARK}]}>{item.symbol}</Text>
-                                </Pressable>
-                            </View>
-                        ))}
-                    </ScrollView>
-            </Modal>
-
             {/* Setting Screen */}
             <ScrollView showsVerticalScrollIndicator={false} style={styles.container}>
                 {/* Header */}
@@ -159,15 +129,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         alignItems: 'center',
         backgroundColor: Colors.BLUE_DARK
-    },
-    // Modal 
-    modalContainer: {
-        margin: 20,
-        paddingLeft: 20,
-        paddingRight: 20,
-        borderRadius: 10,
-        backgroundColor: Colors.MAIN
-    },
+    }
 });
  
 export default Settings;

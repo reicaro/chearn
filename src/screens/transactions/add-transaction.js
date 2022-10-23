@@ -17,30 +17,48 @@ import { getCards, addCard } from '../../dbHelpers/cardcollection';
 import { useIsFocused } from '@react-navigation/native';
 import { getCardList, storeCardList } from '../../utils/card_factoring';
 
-import { call } from '../../utils/openai_integration';
-
 import BackHeader from '../../components/Headers/BackHeader';
 import Button from '../../components/Button';
+
+import { OpenAI } from 'openai-api';
+    //api key of a fresh test account, no payment linked, feel free to use
+const apiKey = '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';
+
+const Open = require('openai-api');
+
+const openai = new Open(apiKey);
+
+async function call_prompt(prompt) {
+    const response = await openai.complete({
+        engine: 'text-davinci-002',
+        prompt: prompt,
+        maxTokens: 100,
+        temperature: 0.7,
+        topP: 1,
+        presencePenalty: 0,
+        frequencyPenalty: 0,
+        bestOf: 1,
+        n: 1,
+        stream: false,
+    });
+    let resp = (response.data['choices'][0]['text']).replace( /^\D+/g, '');
+    return resp;
+}
 
 function detColor(num) {
     if (num[0] == 4) {
         color = '#1A1F71';
     } else if (num[0] == 5) {
-        color = '#EB001B';
+        color = '#EB0012';
     } else if (num[0] == 3) {
-        color = ' #4d4f53';
+        color = '#4d4f53';
     } else if (num[0] == 6) {
         color = '#F9A021';
     } else {
         console.log(num);
+        color = Colors.BLUE_DARK;
     }
     return color;
-}
-
-function computeBest() {
-    for (i in cards) {
-        console.log(i);
-    }
 }
 
 const AddTransaction = ({navigation, route}) => {
@@ -49,10 +67,12 @@ const AddTransaction = ({navigation, route}) => {
     const [date, setDate] = useState(new Date());
     const [amount, setAmount] = useState('');
     const [place, setPlace] = useState('');
-    const [cards, setCards] = useState([]);
+    const [cards, setCards] = useState(route.params.cards);
+    const [cardInfo, setCardInfo] = useState(['Click to compute', '---- ---- ---- ----']);
     const [cardlist, setCardList] = useState([]);
 
     useEffect(() => {
+
         if (route.params?.item) {
             setPlace({name: route.params.item.place});
             setDate(new Date(route.params.item.date));
@@ -90,6 +110,35 @@ const AddTransaction = ({navigation, route}) => {
         });
     }
 
+    async function __compute(place) {
+        var rewards = {};
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
+        for (i in cards) {
+            var curr_bens = [];
+            for (j in data[cards[i]['type']][1]['earnings']) {
+                curr_bens.push(data[cards[i]['type']][1]['earnings'][j]['category']);
+            }
+            rewards[cards[i]['type']] = curr_bens;
+        }
+        let cat = await call_prompt(`Given this dictionary: 1:Airlines/Flights, 2:Office Supply Stores, 3:Car & Car rentals, 4:Department and Specialty Stores, 5:Grocery and Drug stores, 6:Dining and Entertainment, 8:Gas Stations, 9:Home Improvement Stores, 10:Hotels, 11:Internet, Cable, and Phone Services, 12:Travel Purchases, 14:Restaurants, 16:Supermarkets, 17:Utilities, which number does ${String(place)} fit? Return a single number`);
+        for (k in cards) {
+            for (p in rewards[cards[k]['type']]) {
+                console.log('curr = ' + rewards[cards[k]['type']][p]);
+                console.log('cat = ' + cat);
+                if (String(rewards[cards[k]['type']][p]) == String(cat)) {
+                    setCardInfo([cards[k].company, cards[k].num]);
+                    console.log('set');
+                    console.log(cardInfo[0]);
+                    return;
+                }
+            }
+        }
+        await delay(3000);
+        console.log("Waited 3s");
+        setCardInfo(['No Benefits Apply', 'Use Any Card']);
+    }
+
     // Save Transaction
     const __save = () => {
         
@@ -117,7 +166,7 @@ const AddTransaction = ({navigation, route}) => {
                         paddingBottom={15}
                         value={place}
                         placeholder='eg: Gong Cha'
-                        keyboardType='numeric'
+                        keyboardType='default'
                         onChangeText={(text) => setPlace(text)}
                         placeholderTextColor={Colors.PRIMARY}
                         style={[styles.input, Typography.BODY]} />
@@ -150,11 +199,11 @@ const AddTransaction = ({navigation, route}) => {
                     <Text style={[Typography.H1, {color: Colors.BLUE_DARK}, {marginTop: 30}, {marginBottom: 30}, {textAlign: 'center'} ]}>Optimal Card</Text>
                     <View style={styles.cardspace}>
                         <CreditCard
-                        company={'Chearner'} num = {'1234 5678 9101 1123' + '      '} style={{borderRadius: 16,
+                        company={cardInfo[0]} num = {cardInfo[1] + '      '} style={{borderRadius: 16,
                         paddingRight: 10,
                         flexDirection: 'row',
-                        backgroundColor: detColor('4234')}}
-                        onPress={() => {console.log(cards)}}
+                        backgroundColor: detColor(cardInfo[1])}}
+                        onPress={() => {__compute(place)}}
                         />
                     </View>
                 </View>
@@ -210,8 +259,28 @@ const styles = StyleSheet.create({
 });
  
 export default AddTransaction;
+
+//generated by openai by inputting portions of the data Json, ccstack.ai didn't have an official key, so may not be fully accurate
+const keypairs = {
+    1:"Airlines/Flights",
+    2:"Office Supply Stores",
+    3:"Car & Car rentals",
+    4:"Department and Specialty Stores",
+    5:"Grocery and Drug stores",
+    6:"Dining and Entertainment",
+    7:"All Other Purchases",
+    8:"Gas Stations",
+    9:"Home Improvement Stores",
+    10:"Hotels",
+    11:"Internet, Cable, and Phone Services",
+    12:"Travel Purchases",
+    13:"Combined purchases",
+    14:"Restaurants",
+    16:"Supermarkets",
+    17:"Utilities"
+}
  
-data = {
+const data = {
     "Avenue Premier": [
         1,
         {
@@ -260,12 +329,12 @@ data = {
             }
         }
     ],
-    "Chase Freedom\u00ae": [
+    "Chase Freedom": [
         1,
         {
             "_id": "5e690b260b077d5830cadc21",
-            "title": "Chase Freedom\u00ae",
-            "original_title": "Chase Freedom\u00ae",
+            "title": "Chase Freedom",
+            "original_title": "Chase Freedom",
             "fee": 0,
             "url": "https://creditcards.chase.com/cash-back-credit-cards/freedom/card",
             "foreign_fee": true,
@@ -405,7 +474,7 @@ data = {
                     "title": "24/7 direct access to dedicated customer service specialists"
                 },
                 {
-                    "title": "1:1 point transfer to leading frequent travel programs at full value \u2014 that means 1,000 Chase Ultimate Rewards points equal 1,000 partner miles/points"
+                    "title": "1:1 point transfer to leading frequent travel programs at full value  that means 1,000 Chase Ultimate Rewards points equal 1,000 partner miles/points"
                 }
             ],
             "earnings": [
@@ -509,7 +578,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Points are worth 25% more when you redeem for travel through Chase Ultimate Rewards\u00ae. For example, 80,000 points are worth $1,000 toward travel."
+                    "title": "Points are worth 25% more when you redeem for travel through Chase Ultimate Rewards. For example, 80,000 points are worth $1,000 toward travel."
                 },
                 {
                     "title": "Earn unlimited 1 Point Per $1 spent on all other purchases. Points do not expire as long as your account is open."
@@ -573,12 +642,12 @@ data = {
             }
         }
     ],
-    "Chase Freedom\u00ae (Old MasterCard)": [
+    "Chase Freedom (Old MasterCard)": [
         1,
         {
             "_id": "5e690b260b077d5830cadc22",
-            "title": "Chase Freedom\u00ae (Old MasterCard)",
-            "original_title": "Chase Freedom\u00ae (Old MasterCard)",
+            "title": "Chase Freedom (Old MasterCard)",
+            "original_title": "Chase Freedom (Old MasterCard)",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -634,10 +703,10 @@ data = {
                     "title": "Special car rental privileges: Enroll in leading car rental rewards programs from National Car Rental, Avis, and Silvercar"
                 },
                 {
-                    "title": "Roadside Assistance: If you have a roadside emergency, you can call for a tow, jumpstart, tire change, locksmith or gas. You\u2019re covered up to $50 per incident 4 times a year."
+                    "title": "Roadside Assistance: If you have a roadside emergency, you can call for a tow, jumpstart, tire change, locksmith or gas. Youre covered up to $50 per incident 4 times a year."
                 },
                 {
-                    "title": "Receive a statement credit of up to $100 every 4 years as reimbursement for the application fee charged to your card on Global Entry or TSA Pre\u2713"
+                    "title": "Receive a statement credit of up to $100 every 4 years as reimbursement for the application fee charged to your card on Global Entry or TSA Pre"
                 },
                 {
                     "title": "Priority Pass Select membership"
@@ -723,12 +792,12 @@ data = {
             }
         }
     ],
-    "Chase Sapphire\u00ae Card": [
+    "Chase Sapphire Card": [
         1,
         {
             "_id": "5e690b260b077d5830cadc2f",
-            "title": "Chase Sapphire\u00ae Card",
-            "original_title": "Chase Sapphire\u00ae Card",
+            "title": "Chase Sapphire Card",
+            "original_title": "Chase Sapphire Card",
             "fee": 0,
             "url": "https://applynow.chase.com/FlexAppWeb/renderApp.do?SPID=F45J&CELL=6H8X&AFFID=vmz0MzlgTQ8-z2u1G5.0lJsY2ONvdJtRmA&pvid=20130324-760d2a4a764d633e7910&jp_cmp=cc/253243/aff/3-10001939/na",
             "foreign_fee": true,
@@ -885,12 +954,12 @@ data = {
             }
         }
     ],
-    "Chase Private Client Sapphire Preferred\u00ae Card": [
+    "Chase Private Client Sapphire Preferred Card": [
         1,
         {
             "_id": "5e690b260b077d5830cadc2a",
-            "title": "Chase Private Client Sapphire Preferred\u00ae Card",
-            "original_title": "Chase Private Client Sapphire Preferred\u00ae Card",
+            "title": "Chase Private Client Sapphire Preferred Card",
+            "original_title": "Chase Private Client Sapphire Preferred Card",
             "fee": 95,
             "url": "https://creditcards.chase.com/credit-cards/sapphire-preferred-card.aspx",
             "foreign_fee": true,
@@ -926,7 +995,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadaa7",
             "title": "American Express Green Card",
-            "original_title": "American Express\u00ae Green Card",
+            "original_title": "American Express Green Card",
             "nickname": "AMEX",
             "fee": 150,
             "url": "https://www.americanexpress.com/us/credit-cards/card/green/",
@@ -1018,7 +1087,7 @@ data = {
                     "title": "Earn 5,000 bonus points after you add the first authorized user and make a purchase in the first 3 months from account opening"
                 },
                 {
-                    "title": "Earn 40,000 bonus points when you spend $4,000 on purchases in the first 3 months from account opening. That's $500 in travel when you redeem through Chase Ultimate Rewards\u00ae"
+                    "title": "Earn 40,000 bonus points when you spend $4,000 on purchases in the first 3 months from account opening. That's $500 in travel when you redeem through Chase Ultimate Rewards"
                 },
                 {
                     "title": "2X points on travel and dining at restaurants & 1 point per dollar spent on all other purchases"
@@ -1027,7 +1096,7 @@ data = {
                     "title": "24/7 direct access to dedicated customer service specialists"
                 },
                 {
-                    "title": "1:1 point transfer to leading frequent travel programs at full value \u2014 that means 1,000 Chase Ultimate Rewards points equal 1,000 partner miles/points"
+                    "title": "1:1 point transfer to leading frequent travel programs at full value  that means 1,000 Chase Ultimate Rewards points equal 1,000 partner miles/points"
                 }
             ],
             "earnings": [
@@ -1074,12 +1143,12 @@ data = {
             }
         }
     ],
-    "Chase Ink Plus\u00ae Business Credit Card": [
+    "Chase Ink Plus Business Credit Card": [
         1,
         {
             "_id": "5e690b260b077d5830cadc28",
-            "title": "Chase Ink Plus\u00ae Business Credit Card",
-            "original_title": "Chase Ink Plus\u00ae Business Credit Card",
+            "title": "Chase Ink Plus Business Credit Card",
+            "original_title": "Chase Ink Plus Business Credit Card",
             "fee": 95,
             "url": "https://creditcards.chase.com/ink-business-credit-cards/mobile/ink-plus-card",
             "foreign_fee": false,
@@ -1164,11 +1233,11 @@ data = {
             }
         }
     ],
-    "American Express The Platinum Card\u00ae": [
+    "American Express The Platinum Card": [
         2,
         {
             "_id": "5e690b260b077d5830cada99",
-            "title": "American Express The Platinum Card\u00ae",
+            "title": "American Express The Platinum Card",
             "original_title": "American Express Platinum (Business)",
             "nickname": "AMEX",
             "fee": 595,
@@ -1192,10 +1261,10 @@ data = {
                     "title": "Make Business Purchases Rewarding. Get 50% More Points on Purchases of $5k or more and use points for flights and Get 35% Points Back"
                 },
                 {
-                    "title": "Get 5X Membership Rewards\u00ae points on flights and prepaid hotels on amextravel.com"
+                    "title": "Get 5X Membership Rewards points on flights and prepaid hotels on amextravel.com"
                 },
                 {
-                    "title": "Earn 50,000 Membership Rewards\u00ae points after you spend $10,000 and an extra 25,000 points after you spend an additional $10,000 all on qualifying purchases on the Business Platinum Card within your first 3 months of Card Membership."
+                    "title": "Earn 50,000 Membership Rewards points after you spend $10,000 and an extra 25,000 points after you spend an additional $10,000 all on qualifying purchases on the Business Platinum Card within your first 3 months of Card Membership."
                 },
                 {
                     "title": "$200 Airline Fee Credit. Select one qualifying airline and get a statement credit of up to $200 a calendar year for baggage fees and more."
@@ -1204,12 +1273,12 @@ data = {
             "earnings": [
                 {
                     "points": 5,
-                    "description": "Get 5X Membership Rewards\u00ae points on flights and prepaid hotels on amextravel.com",
+                    "description": "Get 5X Membership Rewards points on flights and prepaid hotels on amextravel.com",
                     "category": 1
                 },
                 {
                     "points": 5,
-                    "description": "Get 5X Membership Rewards\u00ae points on flights and prepaid hotels on amextravel.com",
+                    "description": "Get 5X Membership Rewards points on flights and prepaid hotels on amextravel.com",
                     "category": 10
                 },
                 {
@@ -1252,13 +1321,13 @@ data = {
                     "title": "You can also transfer points to our selection of frequent traveler programs."
                 },
                 {
-                    "title": "With the Membership Rewards\u00ae program, you can use points for rewards from over 500 leading brands in travel, gift cards, merchandise, or entertainment."
+                    "title": "With the Membership Rewards program, you can use points for rewards from over 500 leading brands in travel, gift cards, merchandise, or entertainment."
                 },
                 {
                     "title": "Terms and Restrictions Apply."
                 },
                 {
-                    "title": "Earn 25,000 Membership Rewards\u00ae points after you spend $2,000 on purchases on your new Card in your first 3 months of Card Membership."
+                    "title": "Earn 25,000 Membership Rewards points after you spend $2,000 on purchases on your new Card in your first 3 months of Card Membership."
                 },
                 {
                     "title": "3X points for flights booked directly with airlines, 2X points at US gas stations and US supermarkets, 1X points on other purchases."
@@ -1307,12 +1376,12 @@ data = {
             }
         }
     ],
-    "The Amex EveryDay\u2120 Preferred Credit Card from American Express": [
+    "The Amex EveryDay Preferred Credit Card from American Express": [
         1,
         {
             "_id": "5e690b260b077d5830cae31f",
-            "title": "The Amex EveryDay\u2120 Preferred Credit Card from American Express",
-            "original_title": "The Amex EveryDay\u2120 Preferred Credit Card from American Express",
+            "title": "The Amex EveryDay Preferred Credit Card from American Express",
+            "original_title": "The Amex EveryDay Preferred Credit Card from American Express",
             "nickname": "AMEX",
             "fee": 95,
             "url": "https://www.americanexpress.com/us/credit-cards/amex-everyday-preferred",
@@ -1323,7 +1392,7 @@ data = {
                     "title": "Use your Card 30 or more times on purchases in a billing period and get 50% more points on those purchases less returns and credits."
                 },
                 {
-                    "title": "Get 15,000 Membership Rewards\u00ae points after you use your new Card to make $1,000 in purchases in your first 3 months."
+                    "title": "Get 15,000 Membership Rewards points after you use your new Card to make $1,000 in purchases in your first 3 months."
                 },
                 {
                     "title": "3x points at US Supermarkets"
@@ -1383,7 +1452,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn one Membership Rewards\u00ae point for each dollar you spend on eligible purchases"
+                    "title": "Earn one Membership Rewards point for each dollar you spend on eligible purchases"
                 },
                 {
                     "title": "$0 annual fee for the first year, then $95"
@@ -1392,7 +1461,7 @@ data = {
             "earnings": [
                 {
                     "points": 1,
-                    "description": "Earn one Membership Rewards\u00ae point for each dollar you spend on eligible purchases",
+                    "description": "Earn one Membership Rewards point for each dollar you spend on eligible purchases",
                     "category": 7
                 }
             ],
@@ -1476,12 +1545,12 @@ data = {
             }
         }
     ],
-    "American Express\u00ae Business Extra Corporate Card": [
+    "American Express Business Extra Corporate Card": [
         2,
         {
             "_id": "5e690b260b077d5830cada9d",
-            "title": "American Express\u00ae Business Extra Corporate Card",
-            "original_title": "American Express\u00ae Business Extra Corporate Card",
+            "title": "American Express Business Extra Corporate Card",
+            "original_title": "American Express Business Extra Corporate Card",
             "nickname": "AMEX",
             "fee": 55,
             "url": "https://business.americanexpress.com/us/business-extra-card",
@@ -1511,12 +1580,12 @@ data = {
             }
         }
     ],
-    "The Amex EveryDay\u2120 Credit Card from American Express": [
+    "The Amex EveryDay Credit Card from American Express": [
         2,
         {
             "_id": "5e690b260b077d5830cae31e",
-            "title": "The Amex EveryDay\u2120 Credit Card from American Express",
-            "original_title": "The Amex EveryDay\u2120 Credit Card from American Express",
+            "title": "The Amex EveryDay Credit Card from American Express",
+            "original_title": "The Amex EveryDay Credit Card from American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.americanexpress.com/us/credit-cards/amex-everyday",
@@ -1527,7 +1596,7 @@ data = {
                     "title": "Make 20 or more purchases with your Card in a billing period and get 20% more points on those purchases less returns and credits."
                 },
                 {
-                    "title": "Get 10,000 Membership Rewards\u00ae points after you use your new Card to make $1,000 in purchases in your first 3 months."
+                    "title": "Get 10,000 Membership Rewards points after you use your new Card to make $1,000 in purchases in your first 3 months."
                 },
                 {
                     "title": "2x points at US supermarkets, on up to $6,000 per year in purchases (then 1x)"
@@ -1571,7 +1640,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadaa5",
             "title": "American Express Gold Card",
-            "original_title": "American Express\u00ae Gold Card",
+            "original_title": "American Express Gold Card",
             "nickname": "AMEX",
             "fee": 250,
             "url": "https://www.americanexpress.com/us/credit-cards/card/gold-card/",
@@ -1582,7 +1651,7 @@ data = {
                     "title": "You can carry a balance with interest on eligible charges of $100 or more, giving you more control over the amount you pay. When your payment is due, you can choose to pay your full balance, the minimum due or any amount in between."
                 },
                 {
-                    "title": "Enjoy perks while you fly. Feel free to check your bags or enjoy an in-flight meal on us. Select one qualifying airline and then receive up to $100 per calendar year in statement credits when incidental fees are charged by the airline to your American Express\u00ae Gold Card account."
+                    "title": "Enjoy perks while you fly. Feel free to check your bags or enjoy an in-flight meal on us. Select one qualifying airline and then receive up to $100 per calendar year in statement credits when incidental fees are charged by the airline to your American Express Gold Card account."
                 },
                 {
                     "title": "Enjoy every trip abroad with no foreign transaction fees from American Express with the Gold Card."
@@ -1591,34 +1660,34 @@ data = {
                     "title": "Earn up to a total of $10 in statement credits monthly when you pay with the Gold Card at Grubhub, Seamless, The Cheesecake Factory, Ruth's Chris Steak House, Boxed, and participating Shake Shack locations. This can be an annual savings of up to $120. Enrollment required."
                 },
                 {
-                    "title": "Earn 4X Membership Rewards\u00ae points at restaurants worldwide."
+                    "title": "Earn 4X Membership Rewards points at restaurants worldwide."
                 },
                 {
-                    "title": "Earn 4X Membership Rewards\u00ae points at US supermarkets, on up to $25,000 per year in purchases, then 1X."
+                    "title": "Earn 4X Membership Rewards points at US supermarkets, on up to $25,000 per year in purchases, then 1X."
                 },
                 {
-                    "title": "Earn 3X Membership Rewards\u00ae points on flights booked directly with airlines or on amextravel.com."
+                    "title": "Earn 3X Membership Rewards points on flights booked directly with airlines or on amextravel.com."
                 }
             ],
             "earnings": [
                 {
                     "points": 4,
-                    "description": "Earn 4X Membership Rewards\u00ae points at restaurants worldwide",
+                    "description": "Earn 4X Membership Rewards points at restaurants worldwide",
                     "category": 14
                 },
                 {
                     "points": 4,
-                    "description": "Earn 4X Membership Rewards\u00ae points at US supermarkets, on up to $25,000 per year in purchases, then 1X.",
+                    "description": "Earn 4X Membership Rewards points at US supermarkets, on up to $25,000 per year in purchases, then 1X.",
                     "category": 16
                 },
                 {
                     "points": 3,
-                    "description": "Earn 3X Membership Rewards\u00ae points on flights booked directly with airlines or on amextravel.com.",
+                    "description": "Earn 3X Membership Rewards points on flights booked directly with airlines or on amextravel.com.",
                     "category": 1
                 },
                 {
                     "points": 1,
-                    "description": "Earn 1X Membership Rewards\u00ae points for all other purchases.",
+                    "description": "Earn 1X Membership Rewards points for all other purchases.",
                     "category": 7
                 }
             ],
@@ -1640,12 +1709,12 @@ data = {
             }
         }
     ],
-    "Marriott Bonvoy Premier VISA Signature\u00ae Business (ex Rewards Premier)": [
+    "Marriott Bonvoy Premier VISA Signature Business (ex Rewards Premier)": [
         2,
         {
             "_id": "5e690b260b077d5830cadeda",
-            "title": "Marriott Bonvoy Premier VISA Signature\u00ae Business (ex Rewards Premier)",
-            "original_title": "Marriott Bonvoy Premier VISA Signature\u00ae Business (ex Rewards Premier)",
+            "title": "Marriott Bonvoy Premier VISA Signature Business (ex Rewards Premier)",
+            "original_title": "Marriott Bonvoy Premier VISA Signature Business (ex Rewards Premier)",
             "fee": 99,
             "url": "https://creditcards.chase.com/a1/marriottbusiness/naep50p1ksh",
             "foreign_fee": true,
@@ -1661,7 +1730,7 @@ data = {
                     "title": "Earn 1 point on all other purchases."
                 },
                 {
-                    "title": "5 points for every $1 spent at over 3,800 Marriott\u00ae locations, including our exclusive luxury hotel partner, The Ritz-Carlton\u00ae."
+                    "title": "5 points for every $1 spent at over 3,800 Marriott locations, including our exclusive luxury hotel partner, The Ritz-Carlton."
                 }
             ],
             "earnings": [],
@@ -1682,12 +1751,12 @@ data = {
             }
         }
     ],
-    "American Express Platinum Card\u00ae for Schwab": [
+    "American Express Platinum Card for Schwab": [
         2,
         {
             "_id": "5e690b260b077d5830cada9b",
-            "title": "American Express Platinum Card\u00ae for Schwab",
-            "original_title": "American Express Platinum Card\u00ae for Schwab",
+            "title": "American Express Platinum Card for Schwab",
+            "original_title": "American Express Platinum Card for Schwab",
             "nickname": "AMEX",
             "fee": 550,
             "url": "https://www.schwab.com/public/schwab/investing/accounts_products/credit_cards",
@@ -1695,41 +1764,41 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Select one qualifying airline and then receive up to $200 in statement credits per calendar year when incidental fees, such as checked bags and in-flight refreshments, are charged by the airline to your American Express Platinum Card\u00ae for Schwab account"
+                    "title": "Select one qualifying airline and then receive up to $200 in statement credits per calendar year when incidental fees, such as checked bags and in-flight refreshments, are charged by the airline to your American Express Platinum Card for Schwab account"
                 },
                 {
-                    "title": "Receive a statement credit every 4 years after you apply for Global Entry ($100) or every 4.5 years after you apply for TSA Pre\u2713\u00ae ($85) with an eligible Card"
+                    "title": "Receive a statement credit every 4 years after you apply for Global Entry ($100) or every 4.5 years after you apply for TSA Pre ($85) with an eligible Card"
                 },
                 {
                     "title": "Receive a $100 Card statement credit if your qualifying Schwab holdings are equal to or greater than $250,000 or receive a $200 Card statement credit if your qualifying Schwab holdings are equal to or greater than $1,000,000, when measured following Card account approval and annually thereafter."
                 },
                 {
-                    "title": "As an American Express Platinum Card\u00ae for Schwab Member, you receive $15 in Uber credits for U.S. rides each month plus a bonus $20 in December*, delivered through an exclusive Uber app experience"
+                    "title": "As an American Express Platinum Card for Schwab Member, you receive $15 in Uber credits for U.S. rides each month plus a bonus $20 in December*, delivered through an exclusive Uber app experience"
                 },
                 {
                     "title": "American Express Global Lounge Collection"
                 },
                 {
-                    "title": "5X Membership Rewards\u00ae points on prepaid hotels booked on amextravel.com"
+                    "title": "5X Membership Rewards points on prepaid hotels booked on amextravel.com"
                 },
                 {
-                    "title": "5X Membership Rewards\u00ae points on flights booked directly with airlines or with American Express Travel."
+                    "title": "5X Membership Rewards points on flights booked directly with airlines or with American Express Travel."
                 }
             ],
             "earnings": [
                 {
                     "points": 5,
-                    "description": "5X Membership Rewards\u00ae points on flights booked directly with airlines or with American Express Travel.",
+                    "description": "5X Membership Rewards points on flights booked directly with airlines or with American Express Travel.",
                     "category": 1
                 },
                 {
                     "points": 5,
-                    "description": "5X Membership Rewards\u00ae points on prepaid hotels booked on amextravel.com",
+                    "description": "5X Membership Rewards points on prepaid hotels booked on amextravel.com",
                     "category": 10
                 },
                 {
                     "points": 1,
-                    "description": "Earn one Membership Rewards\u00ae point for every eligible dollar you spend.",
+                    "description": "Earn one Membership Rewards point for every eligible dollar you spend.",
                     "category": 7
                 }
             ],
@@ -1751,12 +1820,12 @@ data = {
             }
         }
     ],
-    "The Blue for Business\u00ae Credit Card from American Express": [
+    "The Blue for Business Credit Card from American Express": [
         2,
         {
             "_id": "5e690b260b077d5830cae320",
-            "title": "The Blue for Business\u00ae Credit Card from American Express",
-            "original_title": "The Blue for Business\u00ae Credit Card from American Express",
+            "title": "The Blue for Business Credit Card from American Express",
+            "original_title": "The Blue for Business Credit Card from American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.americanexpress.com/us/small-business/credit-cards/blue-for-business",
@@ -1764,7 +1833,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Get 10,000 Membership Rewards\u00ae points after making your first purchase on the Card within your first 3 months of Card Membership"
+                    "title": "Get 10,000 Membership Rewards points after making your first purchase on the Card within your first 3 months of Card Membership"
                 },
                 {
                     "title": "2X Points for each dollar of eligible purchases made when you book on the American Express Travel website"
@@ -1824,7 +1893,7 @@ data = {
                     "title": "No annual fee."
                 },
                 {
-                    "title": "Earn 2X Membership Rewards\u00ae points on everyday business purchases up to $50,000 with no category restrictions"
+                    "title": "Earn 2X Membership Rewards points on everyday business purchases up to $50,000 with no category restrictions"
                 },
                 {
                     "title": "Ability to spend above the credit limit."
@@ -1866,7 +1935,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cada9e",
             "title": "American Express Business Gold Card",
-            "original_title": "American Express\u00ae Business Gold Card",
+            "original_title": "American Express Business Gold Card",
             "nickname": "AMEX",
             "fee": 295,
             "url": "https://www.americanexpress.com/us/credit-cards/business/business-credit-cards/american-express-business-gold-card-amex",
@@ -1874,10 +1943,10 @@ data = {
             "rewards_type": 9,
             "rewards": [
                 {
-                    "title": "Earn 4X Membership Rewards\u00ae points on the 2 categories where your business spent the most each billing cycle from the list below, plus earn 1X on other purchases."
+                    "title": "Earn 4X Membership Rewards points on the 2 categories where your business spent the most each billing cycle from the list below, plus earn 1X on other purchases."
                 },
                 {
-                    "title": "Book your flight with American Express Travel using Membership Rewards\u00ae Pay with Points and get 25% of those points back."
+                    "title": "Book your flight with American Express Travel using Membership Rewards Pay with Points and get 25% of those points back."
                 },
                 {
                     "title": "Airfare purchased directly from airlines, U.S. purchases for advertising in select media (online, TV, radio), U.S. purchases made directly from select technology providers of computer hardware, software, and cloud solutions, U.S. purchases at gas stations, U.S. purchases at restaurants, U.S. purchases for shipping."
@@ -1894,7 +1963,7 @@ data = {
                 },
                 {
                     "points": 1,
-                    "description": "Earn 4X Membership Rewards\u00ae points on the 2 categories where your business spent the most each billing cycle, including airfare purchased directly from airlines. Earn 1x on other purchases.",
+                    "description": "Earn 4X Membership Rewards points on the 2 categories where your business spent the most each billing cycle, including airfare purchased directly from airlines. Earn 1x on other purchases.",
                     "category": 1
                 },
                 {
@@ -1904,12 +1973,12 @@ data = {
                 },
                 {
                     "points": 1,
-                    "description": "Earn 4X Membership Rewards\u00ae points on the 2 categories where your business spent the most each billing cycle, including U.S. purchases at gas stations. Earn 1x on other purchases.",
+                    "description": "Earn 4X Membership Rewards points on the 2 categories where your business spent the most each billing cycle, including U.S. purchases at gas stations. Earn 1x on other purchases.",
                     "category": 8
                 },
                 {
                     "points": 1,
-                    "description": "Earn 4X Membership Rewards\u00ae points on the 2 categories where your business spent the most each billing cycle, including U.S. purchases at restaurants. Earn 1x on other purchases.",
+                    "description": "Earn 4X Membership Rewards points on the 2 categories where your business spent the most each billing cycle, including U.S. purchases at restaurants. Earn 1x on other purchases.",
                     "category": 14
                 }
             ],
@@ -2042,12 +2111,12 @@ data = {
             }
         }
     ],
-    "Alaska Airlines Husky Visa Signature\u00ae card": [
+    "Alaska Airlines Husky Visa Signature card": [
         2,
         {
             "_id": "5e690b260b077d5830cada5a",
-            "title": "Alaska Airlines Husky Visa Signature\u00ae card",
-            "original_title": "Alaska Airlines Husky Visa Signature\u00ae card",
+            "title": "Alaska Airlines Husky Visa Signature card",
+            "original_title": "Alaska Airlines Husky Visa Signature card",
             "fee": 75,
             "url": "https://www.applyonlinenow.com/USCCapp/Ctl/entry?sc=VACBD8#b",
             "foreign_fee": true,
@@ -2079,12 +2148,12 @@ data = {
             }
         }
     ],
-    "Alaska Airlines Visa\u00ae Business Card\u00ae": [
+    "Alaska Airlines Visa Business Card": [
         2,
         {
             "_id": "5e690b260b077d5830cada60",
-            "title": "Alaska Airlines Visa\u00ae Business Card\u00ae",
-            "original_title": "Alaska Airlines Visa\u00ae Business Card\u00ae",
+            "title": "Alaska Airlines Visa Business Card",
+            "original_title": "Alaska Airlines Visa Business Card",
             "fee": 75,
             "url": "https://www.bankofamerica.com/smallbusiness/credit-cards/products/alaska-airlines-business-credit-card/",
             "foreign_fee": false,
@@ -2133,12 +2202,12 @@ data = {
             }
         }
     ],
-    "Alaska Airlines Visa Signature\u00ae Credit Card": [
+    "Alaska Airlines Visa Signature Credit Card": [
         2,
         {
             "_id": "5e690b260b077d5830cada5f",
-            "title": "Alaska Airlines Visa Signature\u00ae Credit Card",
-            "original_title": "Alaska Airlines Visa Signature\u00ae Credit Card",
+            "title": "Alaska Airlines Visa Signature Credit Card",
+            "original_title": "Alaska Airlines Visa Signature Credit Card",
             "fee": 75,
             "url": "https://www.alaskaair.com/content/credit-card/visa-signature.aspx",
             "foreign_fee": false,
@@ -2199,10 +2268,10 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Receive one free night at any Category 1\u20134 Hyatt hotel or resort every year after your cardmember anniversary."
+                    "title": "Receive one free night at any Category 14 Hyatt hotel or resort every year after your cardmember anniversary."
                 },
                 {
-                    "title": "Earn an extra free night at any Category 1\u20134 Hyatt hotel or resort if you spend $15,000 during your cardmember anniversary year."
+                    "title": "Earn an extra free night at any Category 14 Hyatt hotel or resort if you spend $15,000 during your cardmember anniversary year."
                 },
                 {
                     "title": "Earn 25,000 Bonus Points after you spend $3,000 on purchases within the first 3 months of account opening. Earn an additional 25,000 Bonus Points after you spend $6,000 total on purchases within the first 6 months of account opening."
@@ -2259,12 +2328,12 @@ data = {
             }
         }
     ],
-    "Citi\u00ae / AAdvantage\u00ae Platinum Select\u00ae MasterCard\u00ae": [
+    "Citi / AAdvantage Platinum Select MasterCard": [
         2,
         {
             "_id": "5e690b260b077d5830cadc6c",
-            "title": "Citi\u00ae / AAdvantage\u00ae Platinum Select\u00ae MasterCard\u00ae",
-            "original_title": "Citi\u00ae / AAdvantage\u00ae Platinum Select\u00ae MasterCard\u00ae",
+            "title": "Citi / AAdvantage Platinum Select MasterCard",
+            "original_title": "Citi / AAdvantage Platinum Select MasterCard",
             "fee": 99,
             "url": "https://www.citi.com/credit-cards/credit-card-details/citi.action?ID=citi-aadvantage-platinum-elite-credit-card",
             "foreign_fee": false,
@@ -2283,37 +2352,37 @@ data = {
                     "title": "Earn a $125 American Airlines Flight Discount after you spend $20,000 or more in purchases during your cardmembership year and renew your card."
                 },
                 {
-                    "title": "Earn 2 AAdvantage\u00ae miles for every $1 spent on eligible American Airlines purchases."
+                    "title": "Earn 2 AAdvantage miles for every $1 spent on eligible American Airlines purchases."
                 },
                 {
-                    "title": "Earn 2 AAdvantage\u00ae miles for every $1 spent at restaurants"
+                    "title": "Earn 2 AAdvantage miles for every $1 spent at restaurants"
                 },
                 {
-                    "title": "Earn 2 AAdvantage\u00ae miles for every $1 spent at gas stations."
+                    "title": "Earn 2 AAdvantage miles for every $1 spent at gas stations."
                 },
                 {
-                    "title": "Earn 1 AAdvantage\u00ae mile for every $1 spent on other purchases."
+                    "title": "Earn 1 AAdvantage mile for every $1 spent on other purchases."
                 }
             ],
             "earnings": [
                 {
                     "points": 2,
-                    "description": "Earn 2 AAdvantage\u00ae miles for every $1 spent on eligible American Airlines purchases.",
+                    "description": "Earn 2 AAdvantage miles for every $1 spent on eligible American Airlines purchases.",
                     "category": 1
                 },
                 {
                     "points": 2,
-                    "description": "Earn 2 AAdvantage\u00ae miles for every $1 spent at gas stations.",
+                    "description": "Earn 2 AAdvantage miles for every $1 spent at gas stations.",
                     "category": 8
                 },
                 {
                     "points": 2,
-                    "description": "Earn 2 AAdvantage\u00ae miles for every $1 spent at restaurants",
+                    "description": "Earn 2 AAdvantage miles for every $1 spent at restaurants",
                     "category": 14
                 },
                 {
                     "points": 1,
-                    "description": "Earn 1 AAdvantage\u00ae mile for every $1 spent on other purchases.",
+                    "description": "Earn 1 AAdvantage mile for every $1 spent on other purchases.",
                     "category": 7
                 }
             ],
@@ -2407,7 +2476,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadc7b",
             "title": "CitiBusiness / AAdvantage Platinum Select World Mastercard",
-            "original_title": "CitiBusiness\u00ae / AAdvantage\u00ae Platinum Select\u00ae World MasterCard\u00ae",
+            "original_title": "CitiBusiness / AAdvantage Platinum Select World MasterCard",
             "fee": 99,
             "url": "https://secure.fly.aa.com/citi/direct-cbaa?anchorLocation=DirectURL&title=citibusiness",
             "foreign_fee": false,
@@ -2423,7 +2492,7 @@ data = {
                     "title": "Get the first checked bag free for you and up to 4 traveling companions"
                 },
                 {
-                    "title": "Fly to select destinations on American Airlines operated flights for up to 7,500 fewer AAdvantage\u00ae miles with Reduced Mileage Awards."
+                    "title": "Fly to select destinations on American Airlines operated flights for up to 7,500 fewer AAdvantage miles with Reduced Mileage Awards."
                 },
                 {
                     "title": "Enjoy Preferred Boarding"
@@ -2432,7 +2501,7 @@ data = {
                     "title": "Earn an American Airlines Companion Certificate each year after spending $30,000 or more."
                 },
                 {
-                    "title": "Earn 65,000 American Airlines AAdvantage\u00ae bonus miles after making $4,000 in purchases within the first 4 months of account opening"
+                    "title": "Earn 65,000 American Airlines AAdvantage bonus miles after making $4,000 in purchases within the first 4 months of account opening"
                 },
                 {
                     "title": "Earn 2 miles for every $1 spent on select business categories including  telecommunications merchants, cable and satellite providers, car rental merchants, and gas stations."
@@ -2497,61 +2566,61 @@ data = {
             }
         }
     ],
-    "Citi ThankYou\u00ae Premier Card": [
+    "Citi ThankYou Premier Card": [
         3,
         {
             "_id": "5e690b260b077d5830cadc6a",
-            "title": "Citi ThankYou\u00ae Premier Card",
-            "original_title": "Citi ThankYou\u00ae Premier Card",
+            "title": "Citi ThankYou Premier Card",
+            "original_title": "Citi ThankYou Premier Card",
             "fee": 95,
             "url": "https://www.citi.com/credit-cards/credit-card-details/citi.action?ID=citi-thankyou-premier-credit-card",
             "foreign_fee": false,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 3 ThankYou\u00ae Points per $1 spent on travel including gas."
+                    "title": "Earn 3 ThankYou Points per $1 spent on travel including gas."
                 },
                 {
-                    "title": "Earn 2 ThankYou\u00ae Points per $1 spent on dining out and entertainment."
+                    "title": "Earn 2 ThankYou Points per $1 spent on dining out and entertainment."
                 },
                 {
-                    "title": "Earn 1 ThankYou\u00ae Point for every $1 you spend on all other purchases."
+                    "title": "Earn 1 ThankYou Point for every $1 you spend on all other purchases."
                 }
             ],
             "earnings": [
                 {
                     "points": 3,
-                    "description": "Earn 3 ThankYou\u00ae Points per $1 spent on travel including gas.",
+                    "description": "Earn 3 ThankYou Points per $1 spent on travel including gas.",
                     "category": 1
                 },
                 {
                     "points": 3,
-                    "description": "Earn 3 ThankYou\u00ae Points per $1 spent on travel including gas.",
+                    "description": "Earn 3 ThankYou Points per $1 spent on travel including gas.",
                     "category": 3
                 },
                 {
                     "points": 3,
-                    "description": "Earn 3 ThankYou\u00ae Points per $1 spent on travel including gas.",
+                    "description": "Earn 3 ThankYou Points per $1 spent on travel including gas.",
                     "category": 8
                 },
                 {
                     "points": 3,
-                    "description": "Earn 3 ThankYou\u00ae Points per $1 spent on travel including gas.",
+                    "description": "Earn 3 ThankYou Points per $1 spent on travel including gas.",
                     "category": 10
                 },
                 {
                     "points": 2,
-                    "description": "Earn 2 ThankYou\u00ae Points per $1 spent on dining out and entertainment.",
+                    "description": "Earn 2 ThankYou Points per $1 spent on dining out and entertainment.",
                     "category": 6
                 },
                 {
                     "points": 2,
-                    "description": "Earn 2 ThankYou\u00ae Points per $1 spent on dining out and entertainment.",
+                    "description": "Earn 2 ThankYou Points per $1 spent on dining out and entertainment.",
                     "category": 14
                 },
                 {
                     "points": 1,
-                    "description": "Earn 1 ThankYou\u00ae Point for every $1 you spend on all other purchases.",
+                    "description": "Earn 1 ThankYou Point for every $1 you spend on all other purchases.",
                     "category": 7
                 }
             ],
@@ -2573,22 +2642,22 @@ data = {
             }
         }
     ],
-    "Citi ThankYou\u00ae Preferred Card for College Students": [
+    "Citi ThankYou Preferred Card for College Students": [
         3,
         {
             "_id": "5e690b260b077d5830cadc69",
-            "title": "Citi ThankYou\u00ae Preferred Card for College Students",
-            "original_title": "Citi ThankYou\u00ae Preferred Card for College Students",
+            "title": "Citi ThankYou Preferred Card for College Students",
+            "original_title": "Citi ThankYou Preferred Card for College Students",
             "fee": 0,
             "url": "https://www.citi.com/credit-cards/credit-card-details/detail.do?ID=citi-thankyou-preferred-credit-cards-for-college-students",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 2 ThankYou\u00ae Points per dollar spent on dining at restaurants and entertainment."
+                    "title": "Earn 2 ThankYou Points per dollar spent on dining at restaurants and entertainment."
                 },
                 {
-                    "title": "Earn 1 ThankYou\u00ae Point on other purchases."
+                    "title": "Earn 1 ThankYou Point on other purchases."
                 }
             ],
             "earnings": [],
@@ -2615,7 +2684,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cae2a0",
             "title": "Southwest Rapid Rewards Premier Business Credit Card",
-            "original_title": "Southwest Airlines Rapid Rewards\u00ae Premier Business Credit Card",
+            "original_title": "Southwest Airlines Rapid Rewards Premier Business Credit Card",
             "fee": 99,
             "url": "https://creditcards.chase.com/credit-cards/southwest-premier-business-credit-card.aspx",
             "foreign_fee": false,
@@ -2670,12 +2739,12 @@ data = {
             }
         }
     ],
-    "Citi ThankYou\u00ae Card": [
+    "Citi ThankYou Card": [
         3,
         {
             "_id": "5e690b260b077d5830cadc66",
-            "title": "Citi ThankYou\u00ae Card",
-            "original_title": "Citi ThankYou\u00ae Card",
+            "title": "Citi ThankYou Card",
+            "original_title": "Citi ThankYou Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -2712,7 +2781,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cae2a3",
             "title": "Southwest Rapid Rewards Performance Business Credit Card",
-            "original_title": "Southwest Rapid Rewards\u00ae Performance Business Credit Card",
+            "original_title": "Southwest Rapid Rewards Performance Business Credit Card",
             "nickname": "SWA",
             "fee": 199,
             "url": "https://creditcards.chase.com/southwest/performance-business-credit-card",
@@ -2726,7 +2795,7 @@ data = {
                     "title": "Inflight WiFi Credits."
                 },
                 {
-                    "title": "Global Entry or TSA Pre\u2713\u00ae Fee credit in the form of a statement credit of up to $100 every four years."
+                    "title": "Global Entry or TSA Pre Fee credit in the form of a statement credit of up to $100 every four years."
                 },
                 {
                     "title": "Four Upgraded Boardings per year when available."
@@ -2735,7 +2804,7 @@ data = {
                     "title": "Earn tier qualifying points towards A-List status."
                 },
                 {
-                    "title": "Earn 3 points for every $1 you spend on Southwest Airlines\u00ae purchases."
+                    "title": "Earn 3 points for every $1 you spend on Southwest Airlines purchases."
                 },
                 {
                     "title": "Earn 2 points for every $1 you spend on social media and search engine advertising, Internet, cable, and phone services."
@@ -2750,7 +2819,7 @@ data = {
             "earnings": [
                 {
                     "points": 3,
-                    "description": "Earn 3 points for every $1 you spend on Southwest Airlines\u00ae purchases.",
+                    "description": "Earn 3 points for every $1 you spend on Southwest Airlines purchases.",
                     "category": 1
                 },
                 {
@@ -2786,12 +2855,12 @@ data = {
             }
         }
     ],
-    "Citi Prestige\u00ae Card": [
+    "Citi Prestige Card": [
         3,
         {
             "_id": "5e690b260b077d5830cadc5c",
-            "title": "Citi Prestige\u00ae Card",
-            "original_title": "Citi Prestige\u00ae Card",
+            "title": "Citi Prestige Card",
+            "original_title": "Citi Prestige Card",
             "fee": 495,
             "url": "https://www.citi.com/credit-cards/credit-card-details/citi.action?ID=citi-prestige-card",
             "foreign_fee": false,
@@ -2804,13 +2873,13 @@ data = {
                     "title": "Receive a $100 Global Entry application fee credit. Once approved for Global Entry by the U.S. Government, you can bypass long lines and enjoy expedited entry into the U.S."
                 },
                 {
-                    "title": "Enjoy complimentary access to hundreds of VIP lounges through Priority Pass\u2122 Select."
+                    "title": "Enjoy complimentary access to hundreds of VIP lounges through Priority Pass Select."
                 },
                 {
-                    "title": "Enjoy complimentary access to American Airlines Admirals Club\u00ae lounges, plus hundreds of VIP lounges through Priority Pass\u2122 Select."
+                    "title": "Enjoy complimentary access to American Airlines Admirals Club lounges, plus hundreds of VIP lounges through Priority Pass Select."
                 },
                 {
-                    "title": "Earn 50,000 bonus ThankYou\u00ae Points after you spend $4,000 in purchases within 3 months of account opening."
+                    "title": "Earn 50,000 bonus ThankYou Points after you spend $4,000 in purchases within 3 months of account opening."
                 },
                 {
                     "title": "Complimentary 4th Night at a hotel of your choice after a minimum 4 consecutive night booking through ThankYou.com (based on your average night stay, exclusive of taxes and fees).2  Beginning September 1, 2019, this benefit is capped at 2 times, each year."
@@ -2876,7 +2945,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cae2a1",
             "title": "Southwest Rapid Rewards Premier Credit Card",
-            "original_title": "Southwest Airlines Rapid Rewards\u00ae Premier Credit Card",
+            "original_title": "Southwest Airlines Rapid Rewards Premier Credit Card",
             "fee": 99,
             "url": "https://creditcards.chase.com/a1/southwest/2rtfosam1",
             "foreign_fee": false,
@@ -2889,7 +2958,7 @@ data = {
                     "title": "6,000 Bonus Points after your Cardmember Anniversary"
                 },
                 {
-                    "title": "2 points per $1 spent on Southwest Airlines\u00ae and Rapid Rewards\u00ae Hotel and Car Rental Partner purchases"
+                    "title": "2 points per $1 spent on Southwest Airlines and Rapid Rewards Hotel and Car Rental Partner purchases"
                 },
                 {
                     "title": "1 point per $1 spent on all other purchases"
@@ -2898,17 +2967,17 @@ data = {
             "earnings": [
                 {
                     "points": 2,
-                    "description": "2 points per $1 spent on Southwest Airlines\u00ae and Rapid Rewards\u00ae Hotel and Car Rental Partner purchases",
+                    "description": "2 points per $1 spent on Southwest Airlines and Rapid Rewards Hotel and Car Rental Partner purchases",
                     "category": 1
                 },
                 {
                     "points": 2,
-                    "description": "2 points per $1 spent on Southwest Airlines\u00ae and Rapid Rewards\u00ae Hotel and Car Rental Partner purchases",
+                    "description": "2 points per $1 spent on Southwest Airlines and Rapid Rewards Hotel and Car Rental Partner purchases",
                     "category": 3
                 },
                 {
                     "points": 2,
-                    "description": "2 points per $1 spent on Southwest Airlines\u00ae and Rapid Rewards\u00ae Hotel and Car Rental Partner purchases",
+                    "description": "2 points per $1 spent on Southwest Airlines and Rapid Rewards Hotel and Car Rental Partner purchases",
                     "category": 10
                 },
                 {
@@ -2946,7 +3015,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Round Up to the nearest 10 points on every purchase \u2014 with no cap."
+                    "title": "Round Up to the nearest 10 points on every purchase  with no cap."
                 },
                 {
                     "title": "No annual fee."
@@ -2958,7 +3027,7 @@ data = {
                     "title": "1X on All Other Purchases."
                 },
                 {
-                    "title": "10% Points Back for the first 100,000 ThankYou\u00ae Points you redeem per year."
+                    "title": "10% Points Back for the first 100,000 ThankYou Points you redeem per year."
                 }
             ],
             "earnings": [
@@ -2996,12 +3065,12 @@ data = {
             }
         }
     ],
-    "Southwest Airlines Rapid Rewards\u00ae Plus Business Card": [
+    "Southwest Airlines Rapid Rewards Plus Business Card": [
         3,
         {
             "_id": "5e690b260b077d5830cae29e",
-            "title": "Southwest Airlines Rapid Rewards\u00ae Plus Business Card",
-            "original_title": "Southwest Airlines Rapid Rewards\u00ae Plus Business Card",
+            "title": "Southwest Airlines Rapid Rewards Plus Business Card",
+            "original_title": "Southwest Airlines Rapid Rewards Plus Business Card",
             "fee": 69,
             "url": "https://creditcards.chase.com/a1/southwest/partnersbizplus",
             "foreign_fee": true,
@@ -3056,12 +3125,12 @@ data = {
             }
         }
     ],
-    "Citi ThankYou\u00ae Preferred Card": [
+    "Citi ThankYou Preferred Card": [
         3,
         {
             "_id": "5e690b260b077d5830cadc67",
-            "title": "Citi ThankYou\u00ae Preferred Card",
-            "original_title": "Citi ThankYou\u00ae Preferred Card",
+            "title": "Citi ThankYou Preferred Card",
+            "original_title": "Citi ThankYou Preferred Card",
             "fee": 0,
             "url": "https://www.citi.com/credit-cards/credit-card-details/citi.action?ID=citi-thankyou-credit-card-preferred-card",
             "foreign_fee": true,
@@ -3071,26 +3140,26 @@ data = {
                     "title": "Citi Price Rewind can help get you a lower price after you buy. Register an item you purchased with your card and we will track prices at hundreds of online merchants for 60 days from your purchase date. If we find a lower price you can request a refund of the price difference, up to $300 per item and up to $1,200 per calendar year."
                 },
                 {
-                    "title": "2x ThankYou\u00ae Points per dollar spent on purchases for dining at restaurants and entertainment."
+                    "title": "2x ThankYou Points per dollar spent on purchases for dining at restaurants and entertainment."
                 },
                 {
-                    "title": "1x ThankYou\u00ae Point  per $1 spent on other purchases."
+                    "title": "1x ThankYou Point  per $1 spent on other purchases."
                 }
             ],
             "earnings": [
                 {
                     "points": 2,
-                    "description": "2x ThankYou\u00ae Points per dollar spent on purchases for dining at restaurants and entertainment.",
+                    "description": "2x ThankYou Points per dollar spent on purchases for dining at restaurants and entertainment.",
                     "category": 6
                 },
                 {
                     "points": 2,
-                    "description": "2x ThankYou\u00ae Points per dollar spent on purchases for dining at restaurants and entertainment.",
+                    "description": "2x ThankYou Points per dollar spent on purchases for dining at restaurants and entertainment.",
                     "category": 14
                 },
                 {
                     "points": 1,
-                    "description": "1x ThankYou\u00ae Point  per $1 spent on other purchases.",
+                    "description": "1x ThankYou Point  per $1 spent on other purchases.",
                     "category": 7
                 }
             ],
@@ -3112,12 +3181,12 @@ data = {
             }
         }
     ],
-    "Southwest Airlines Rapid Rewards\u00ae Classic Card": [
+    "Southwest Airlines Rapid Rewards Classic Card": [
         3,
         {
             "_id": "5e690b260b077d5830cae29d",
-            "title": "Southwest Airlines Rapid Rewards\u00ae Classic Card",
-            "original_title": "Southwest Airlines Rapid Rewards\u00ae Classic Card",
+            "title": "Southwest Airlines Rapid Rewards Classic Card",
+            "original_title": "Southwest Airlines Rapid Rewards Classic Card",
             "fee": 39,
             "url": "",
             "foreign_fee": true,
@@ -3177,7 +3246,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cae29f",
             "title": "Southwest Rapid Rewards Plus Credit Card",
-            "original_title": "Southwest Airlines Rapid Rewards\u00ae Plus Card",
+            "original_title": "Southwest Airlines Rapid Rewards Plus Card",
             "fee": 99,
             "url": "https://creditcards.chase.com/southwest/cards/plus-credit-card",
             "foreign_fee": true,
@@ -3247,7 +3316,7 @@ data = {
                     "title": "Shop with Points at Amazon.com or BestBuy.com treat yourself to something you've been wanting"
                 },
                 {
-                    "title": "Round Up to the nearest 10 points on every purchase \u2014 with no cap \u2013\u2013 means you earn even more points"
+                    "title": "Round Up to the nearest 10 points on every purchase  with no cap  means you earn even more points"
                 },
                 {
                     "title": "2X at Supermarkets & Gas Stations for the first $6,000 per year (and 1 point per $1 spent thereafter)"
@@ -3256,7 +3325,7 @@ data = {
                     "title": "1X on All Other Purchases"
                 },
                 {
-                    "title": "10% Points Back for the first 100,000 ThankYou\u00ae Points you redeem per year helps keep a little something in reserve for fun"
+                    "title": "10% Points Back for the first 100,000 ThankYou Points you redeem per year helps keep a little something in reserve for fun"
                 }
             ],
             "earnings": [
@@ -3294,22 +3363,22 @@ data = {
             }
         }
     ],
-    "CitiBusiness ThankYou\u00ae Card": [
+    "CitiBusiness ThankYou Card": [
         3,
         {
             "_id": "5e690b260b077d5830cadc79",
-            "title": "CitiBusiness ThankYou\u00ae Card",
-            "original_title": "CitiBusiness ThankYou\u00ae Card",
+            "title": "CitiBusiness ThankYou Card",
+            "original_title": "CitiBusiness ThankYou Card",
             "fee": 0,
             "url": "https://www.citi.com/credit-cards/credit-card-details/detail.do?ID=citibusiness-thankyou-mastercard-credit-card",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 3 ThankYou\u00ae points for every dollar you spend on eligible purchases in rotating business categories."
+                    "title": "Earn 3 ThankYou points for every dollar you spend on eligible purchases in rotating business categories."
                 },
                 {
-                    "title": "Earn 1 ThankYou\u00ae Point for every $1 spent on other purchases."
+                    "title": "Earn 1 ThankYou Point for every $1 spent on other purchases."
                 }
             ],
             "earnings": [],
@@ -3349,10 +3418,10 @@ data = {
                     "title": "Four Upgraded Boardings per year when available"
                 },
                 {
-                    "title": "Earn 2 points for every $1 you spend on Southwest Airlines\u00ae purchases."
+                    "title": "Earn 2 points for every $1 you spend on Southwest Airlines purchases."
                 },
                 {
-                    "title": "Earn 2 points for every $1 you spend on Rapid Rewards\u00ae hotel and car rental partner purchases."
+                    "title": "Earn 2 points for every $1 you spend on Rapid Rewards hotel and car rental partner purchases."
                 },
                 {
                     "title": "Earn 1 point for every $1 you spend on all other purchases."
@@ -3370,17 +3439,17 @@ data = {
             "earnings": [
                 {
                     "points": 2,
-                    "description": "Earn 2 points for every $1 you spend on Southwest Airlines\u00ae purchases.",
+                    "description": "Earn 2 points for every $1 you spend on Southwest Airlines purchases.",
                     "category": 1
                 },
                 {
                     "points": 2,
-                    "description": "Earn 2 points for every $1 you spend on Rapid Rewards\u00ae hotel and car rental partner purchases.",
+                    "description": "Earn 2 points for every $1 you spend on Rapid Rewards hotel and car rental partner purchases.",
                     "category": 3
                 },
                 {
                     "points": 2,
-                    "description": "Earn 2 points for every $1 you spend on Rapid Rewards\u00ae hotel and car rental partner purchases.",
+                    "description": "Earn 2 points for every $1 you spend on Rapid Rewards hotel and car rental partner purchases.",
                     "category": 10
                 },
                 {
@@ -3406,12 +3475,12 @@ data = {
             }
         }
     ],
-    "United MileagePlus\u00ae Explorer Business": [
+    "United MileagePlus Explorer Business": [
         3,
         {
             "_id": "5e690b260b077d5830cae39b",
-            "title": "United MileagePlus\u00ae Explorer Business",
-            "original_title": "United MileagePlus\u00ae Explorer Business",
+            "title": "United MileagePlus Explorer Business",
+            "original_title": "United MileagePlus Explorer Business",
             "fee": 95,
             "url": "https://creditcards.chase.com/credit-cards/united-business-credit-card.aspx",
             "foreign_fee": false,
@@ -3490,7 +3559,7 @@ data = {
             "rewards_type": 16,
             "rewards": [
                 {
-                    "title": "Up to $100 as a statement credit for Global Entry or TSA Precheck\u00ae every 4 years as reimbursement for the application fee for either program when charged to your card."
+                    "title": "Up to $100 as a statement credit for Global Entry or TSA Precheck every 4 years as reimbursement for the application fee for either program when charged to your card."
                 },
                 {
                     "title": "Take some time to relax before your flight with two United Club one-time passes, which will be deposited into your MileagePlus account after account opening and each year for your Cardmember anniversary. Enjoy complimentary beverages, snacks, and amenities like workspaces, free Wi-Fi and more."
@@ -3499,7 +3568,7 @@ data = {
                     "title": "Purchases made with your Explorer card outside the U.S. will not be subject to foreign transaction fees."
                 },
                 {
-                    "title": "First checked bag \u2014 up to $120 value"
+                    "title": "First checked bag  up to $120 value"
                 },
                 {
                     "title": "Earn 60,000 bonus miles after you spend $3,000 on purchases in the first 3 months your account is open."
@@ -3580,7 +3649,7 @@ data = {
                     "title": "Up to $100 statement credit to reimburse your application fee once every four years."
                 },
                 {
-                    "title": "Stay connected with 12 complimentary Gogo\u00ae Inflight Wi-Fi passes per year."
+                    "title": "Stay connected with 12 complimentary Gogo Inflight Wi-Fi passes per year."
                 },
                 {
                     "title": "No foreign transaction fees."
@@ -3589,7 +3658,7 @@ data = {
                     "title": "GroundLink Black Car Service - Receive chauffeured black car service at a discount in more than 110 countries."
                 },
                 {
-                    "title": "Enjoy special privileges at more than 500 luxury Relais & Ch\u00e2teaux properties around the world."
+                    "title": "Enjoy special privileges at more than 500 luxury Relais & Chteaux properties around the world."
                 },
                 {
                     "title": "Earn 3X points with your Mobile Wallet"
@@ -4011,12 +4080,12 @@ data = {
             }
         }
     ],
-    "Barclaycard Arrival Plus\u2122 World Elite MasterCard\u00ae": [
+    "Barclaycard Arrival Plus World Elite MasterCard": [
         4,
         {
             "_id": "5e690b260b077d5830cadb07",
-            "title": "Barclaycard Arrival Plus\u2122 World Elite MasterCard\u00ae",
-            "original_title": "Barclaycard Arrival Plus\u2122 World Elite MasterCard\u00ae",
+            "title": "Barclaycard Arrival Plus World Elite MasterCard",
+            "original_title": "Barclaycard Arrival Plus World Elite MasterCard",
             "fee": 89,
             "url": "https://cards.barclaycardus.com/banking/cards/barclaycard-arrival-plus-world-elite-mastercard/",
             "foreign_fee": false,
@@ -4038,7 +4107,7 @@ data = {
                     "title": "Earn 2X miles on all purchases - Miles don't expire as long as your account is open, active and in good standing"
                 },
                 {
-                    "title": "Complimentary online FICO\u00ae Credit Score access for Barclaycard Arrival cardmembers"
+                    "title": "Complimentary online FICO Credit Score access for Barclaycard Arrival cardmembers"
                 },
                 {
                     "title": "Chip card for increased confidence and convenience to pay abroad as easily as you do at home"
@@ -4174,12 +4243,12 @@ data = {
             }
         }
     ],
-    "The Wyndham Rewards\u00ae Visa Signature\u00ae Card": [
+    "The Wyndham Rewards Visa Signature Card": [
         4,
         {
             "_id": "5e690b260b077d5830cae33f",
-            "title": "The Wyndham Rewards\u00ae Visa Signature\u00ae Card",
-            "original_title": "The Wyndham Rewards\u00ae Visa Signature\u00ae Card",
+            "title": "The Wyndham Rewards Visa Signature Card",
+            "original_title": "The Wyndham Rewards Visa Signature Card",
             "fee": 69,
             "url": "https://www.barclaycardus.com/apply/Landing.action?campaignId=1861&cellNumber=28&prodidreq=CCVVS55344",
             "foreign_fee": true,
@@ -4299,12 +4368,12 @@ data = {
             }
         }
     ],
-    "College Rewards Visa\u00ae Card": [
+    "College Rewards Visa Card": [
         140,
         {
             "_id": "5e690b260b077d5830cadd0e",
-            "title": "College Rewards Visa\u00ae Card",
-            "original_title": "College Rewards Visa\u00ae Card",
+            "title": "College Rewards Visa Card",
+            "original_title": "College Rewards Visa Card",
             "fee": 0,
             "url": "https://online1.elancard.com/oad/apply/begin?productId=35",
             "foreign_fee": true,
@@ -4333,12 +4402,12 @@ data = {
             }
         }
     ],
-    "American Express\u00ae Corporate Meeting Card": [
+    "American Express Corporate Meeting Card": [
         4,
         {
             "_id": "5e690b260b077d5830cadaa2",
-            "title": "American Express\u00ae Corporate Meeting Card",
-            "original_title": "American Express\u00ae Corporate Meeting Card",
+            "title": "American Express Corporate Meeting Card",
+            "original_title": "American Express Corporate Meeting Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://business.americanexpress.com/us/corporate-meeting-card",
@@ -4819,12 +4888,12 @@ data = {
             }
         }
     ],
-    "Credit Builder Secured Visa\u00ae Credit Card": [
+    "Credit Builder Secured Visa Credit Card": [
         5,
         {
             "_id": "5e690b260b077d5830cadd25",
-            "title": "Credit Builder Secured Visa\u00ae Credit Card",
-            "original_title": "Credit Builder Secured Visa\u00ae Credit Card",
+            "title": "Credit Builder Secured Visa Credit Card",
+            "original_title": "Credit Builder Secured Visa Credit Card",
             "fee": 25,
             "url": "https://www.academybankco.com/personal/creditcards/creditbuilder.cfm",
             "foreign_fee": true,
@@ -4890,12 +4959,12 @@ data = {
             }
         }
     ],
-    "SunTrust Platinum Visa\u00ae with SunTrust Rewards": [
+    "SunTrust Platinum Visa with SunTrust Rewards": [
         5,
         {
             "_id": "5e690b260b077d5830cae2f5",
-            "title": "SunTrust Platinum Visa\u00ae with SunTrust Rewards",
-            "original_title": "SunTrust Platinum Visa\u00ae with SunTrust Rewards",
+            "title": "SunTrust Platinum Visa with SunTrust Rewards",
+            "original_title": "SunTrust Platinum Visa with SunTrust Rewards",
             "fee": 0,
             "url": "https://www.suntrust.com/static/documents/termsandconditions/2012plwr.pdf",
             "foreign_fee": true,
@@ -4961,12 +5030,12 @@ data = {
             }
         }
     ],
-    "American Express\u00ae Corporate Gold Card": [
+    "American Express Corporate Gold Card": [
         5,
         {
             "_id": "5e690b260b077d5830cadaa0",
-            "title": "American Express\u00ae Corporate Gold Card",
-            "original_title": "American Express\u00ae Corporate Gold Card",
+            "title": "American Express Corporate Gold Card",
+            "original_title": "American Express Corporate Gold Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://business.americanexpress.com/us/corporate-gold-card",
@@ -4974,7 +5043,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 1 Membership Rewards\u00ae point for each dollar you spend on eligible purchases."
+                    "title": "Earn 1 Membership Rewards point for each dollar you spend on eligible purchases."
                 }
             ],
             "earnings": [],
@@ -4996,12 +5065,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Business Bonus Rewards": [
+    "Visa Business Bonus Rewards": [
         5,
         {
             "_id": "5e690b260b077d5830cae4e6",
-            "title": "Visa\u00ae Business Bonus Rewards",
-            "original_title": "Visa\u00ae Business Bonus Rewards",
+            "title": "Visa Business Bonus Rewards",
+            "original_title": "Visa Business Bonus Rewards",
             "fee": 0,
             "url": "https://online1.elancard.com/oad/catalog/learnMore.controller?productId=90",
             "foreign_fee": true,
@@ -5110,7 +5179,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Save 10\u00a2/gal (up to 20 gallons); Fuel Rewards\u00ae Gold Status = 5\u00a2/gal (up to 20 gallons)  Shell | Fuel Rewards\u00ae Credit Cards = 5\u00a2/gal (up to 20 gallons)"
+                    "title": "Save 10/gal (up to 20 gallons); Fuel Rewards Gold Status = 5/gal (up to 20 gallons)  Shell | Fuel Rewards Credit Cards = 5/gal (up to 20 gallons)"
                 },
                 {
                     "title": "2% Shell rebates on your first $10,000 Dining and Groceries purchases (per year)"
@@ -5191,12 +5260,12 @@ data = {
             }
         }
     ],
-    "Minnesota Twins\u00ae BankAmericard Cash Rewards\u2122 MasterCard\u00ae": [
+    "Minnesota Twins BankAmericard Cash Rewards MasterCard": [
         5,
         {
             "_id": "5e690b260b077d5830cadf33",
-            "title": "Minnesota Twins\u00ae BankAmericard Cash Rewards\u2122 MasterCard\u00ae",
-            "original_title": "Minnesota Twins\u00ae BankAmericard Cash Rewards\u2122 MasterCard\u00ae",
+            "title": "Minnesota Twins BankAmericard Cash Rewards MasterCard",
+            "original_title": "Minnesota Twins BankAmericard Cash Rewards MasterCard",
             "fee": 0,
             "url": "https://www.bankofamerica.com/credit-cards/products/mlb-credit-cards.go",
             "foreign_fee": true,
@@ -5917,7 +5986,7 @@ data = {
             "rewards_type": 4,
             "rewards": [
                 {
-                    "title": "Get complimentary access to Delta Sky Club\u00ae and a discounted rate for up to two guests. Enjoy snacks and beverages, Wi-Fi access, satellite TV, personalized flight assistance, private restrooms and more at the Club."
+                    "title": "Get complimentary access to Delta Sky Club and a discounted rate for up to two guests. Enjoy snacks and beverages, Wi-Fi access, satellite TV, personalized flight assistance, private restrooms and more at the Club."
                 },
                 {
                     "title": "First checked bag free and Main Cabin 1 Priority Boarding on Delta flights."
@@ -5926,7 +5995,7 @@ data = {
                     "title": "Enjoy a Domestic First or Main Cabin round-trip companion certificate each year upon renewal of your Card."
                 },
                 {
-                    "title": "Earn 15,000 Medallion\u00ae Qualification Miles and 15,000 bonus miles after you reach $30,000 or more on purchases on your Card within the calendar year."
+                    "title": "Earn 15,000 Medallion Qualification Miles and 15,000 bonus miles after you reach $30,000 or more on purchases on your Card within the calendar year."
                 },
                 {
                     "title": "3x Delta SkyMiles for each dollar spent on qualifying Delta purchases."
@@ -6137,12 +6206,12 @@ data = {
             }
         }
     ],
-    "TCF Bank Visa\u00ae Business Bonus Rewards PLUS": [
+    "TCF Bank Visa Business Bonus Rewards PLUS": [
         7,
         {
             "_id": "5e690b260b077d5830cae307",
-            "title": "TCF Bank Visa\u00ae Business Bonus Rewards PLUS",
-            "original_title": "TCF Bank Visa\u00ae Business Bonus Rewards PLUS",
+            "title": "TCF Bank Visa Business Bonus Rewards PLUS",
+            "original_title": "TCF Bank Visa Business Bonus Rewards PLUS",
             "fee": 50,
             "url": "https://online1.elancard.com/oad/catalog/landing.controller?locationCode=14694",
             "foreign_fee": true,
@@ -6315,12 +6384,12 @@ data = {
             }
         }
     ],
-    "Pepperdine University VISA\u00ae Card": [
+    "Pepperdine University VISA Card": [
         7,
         {
             "_id": "5e690b260b077d5830cadfc7",
-            "title": "Pepperdine University VISA\u00ae Card",
-            "original_title": "Pepperdine University VISA\u00ae Card",
+            "title": "Pepperdine University VISA Card",
+            "original_title": "Pepperdine University VISA Card",
             "fee": 0,
             "url": "http://www.pepperdine.edu/alumni/benefits/visa/default.htm",
             "foreign_fee": true,
@@ -6354,7 +6423,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadb34",
             "title": "Blue Cash Preferred Card from American Express",
-            "original_title": "Blue Cash Preferred\u00ae Card from American Express",
+            "original_title": "Blue Cash Preferred Card from American Express",
             "nickname": "AMEX",
             "fee": 95,
             "url": "https://www.americanexpress.com/us/credit-cards/card/blue-cash-preferred/",
@@ -6362,13 +6431,13 @@ data = {
             "rewards_type": 1,
             "rewards": [
                 {
-                    "title": "Return Protection. If you try to return an eligible item within 90 days from the date of purchase and the merchant won't take it back, American Express may refund the full purchase price (excluding shipping and handling), up to $300 per item, up to a maximum of $1,000 per calendar year per Card account, if you purchased it entirely with your eligible American Express\u00ae Card. Please read important exclusions and restrictions."
+                    "title": "Return Protection. If you try to return an eligible item within 90 days from the date of purchase and the merchant won't take it back, American Express may refund the full purchase price (excluding shipping and handling), up to $300 per item, up to a maximum of $1,000 per calendar year per Card account, if you purchased it entirely with your eligible American Express Card. Please read important exclusions and restrictions."
                 },
                 {
-                    "title": "Purchase Protection. Shop with added confidence and Purchase Protection\u2666, which can help protect eligible purchases made with the Card against accidental damage and theft for up to 90 days from the date of purchase. Please read important exclusions and restrictions."
+                    "title": "Purchase Protection. Shop with added confidence and Purchase Protection, which can help protect eligible purchases made with the Card against accidental damage and theft for up to 90 days from the date of purchase. Please read important exclusions and restrictions."
                 },
                 {
-                    "title": "Extended Warranty. When you use your American Express\u00ae Card for eligible purchases, you can get up to one extra year added to the original manufacturer's warranty. Applies to warranties of 5 years or less. Please read important exclusions and restrictions."
+                    "title": "Extended Warranty. When you use your American Express Card for eligible purchases, you can get up to one extra year added to the original manufacturer's warranty. Applies to warranties of 5 years or less. Please read important exclusions and restrictions."
                 },
                 {
                     "title": "Earn $250 back after you spend $1,000 in purchases on your new Card in your first 3 months. You will receive $200 back in the form of a statement credit."
@@ -6497,12 +6566,12 @@ data = {
             }
         }
     ],
-    "The Hawaiian Airlines\u00ae World Elite MasterCard\u00ae from Barclays": [
+    "The Hawaiian Airlines World Elite MasterCard from Barclays": [
         7,
         {
             "_id": "5e690b260b077d5830cae329",
-            "title": "The Hawaiian Airlines\u00ae World Elite MasterCard\u00ae from Barclays",
-            "original_title": "The Hawaiian Airlines\u00ae World Elite MasterCard\u00ae from Barclays",
+            "title": "The Hawaiian Airlines World Elite MasterCard from Barclays",
+            "original_title": "The Hawaiian Airlines World Elite MasterCard from Barclays",
             "fee": 99,
             "url": "https://cards.barclaycardus.com/banking/cards/hawaiian-airlines-world-elite-mastercard/",
             "foreign_fee": false,
@@ -6685,12 +6754,12 @@ data = {
             }
         }
     ],
-    "USAA Rewards\u2122 Visa Signature\u00ae Card": [
+    "USAA Rewards Visa Signature Card": [
         7,
         {
             "_id": "5e690b260b077d5830cae3cf",
-            "title": "USAA Rewards\u2122 Visa Signature\u00ae Card",
-            "original_title": "USAA Rewards\u2122 Visa Signature\u00ae Card",
+            "title": "USAA Rewards Visa Signature Card",
+            "original_title": "USAA Rewards Visa Signature Card",
             "fee": 0,
             "url": "https://www.usaa.com/inet/wc/bank-credit-card-usaa-rewards-visa",
             "foreign_fee": false,
@@ -6830,7 +6899,7 @@ data = {
                     "title": "No foreign transaction fees"
                 },
                 {
-                    "title": "In addition to earning miles, you\u2019ll also earn tier points. You earn 25 tier points per $2,500 in purchases (maximum of 50 per month) and additional tier points when you fly Virgin Atlantic or our airline partners."
+                    "title": "In addition to earning miles, youll also earn tier points. You earn 25 tier points per $2,500 in purchases (maximum of 50 per month) and additional tier points when you fly Virgin Atlantic or our airline partners."
                 },
                 {
                     "title": "Get a companion reward in the same cabin class when you redeem Flying Club miles for a Virgin Atlantic reward ticket. Must spend $25,000 or more in purchases annually to qualify."
@@ -7125,19 +7194,19 @@ data = {
             }
         }
     ],
-    "AAA Credit Card with WorldPoints\u00ae Rewards": [
+    "AAA Credit Card with WorldPoints Rewards": [
         8,
         {
             "_id": "5e690b260b077d5830cada34",
-            "title": "AAA Credit Card with WorldPoints\u00ae Rewards",
-            "original_title": "AAA Credit Card with WorldPoints\u00ae Rewards",
+            "title": "AAA Credit Card with WorldPoints Rewards",
+            "original_title": "AAA Credit Card with WorldPoints Rewards",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn one point for every $1 you spend on everyday retail purchases with your WorldPoints Visa\u00ae card."
+                    "title": "Earn one point for every $1 you spend on everyday retail purchases with your WorldPoints Visa card."
                 }
             ],
             "earnings": [],
@@ -7159,12 +7228,12 @@ data = {
             }
         }
     ],
-    "Citi\u00ae Dividend\u00ae Card for College Students": [
+    "Citi Dividend Card for College Students": [
         8,
         {
             "_id": "5e690b260b077d5830cadc73",
-            "title": "Citi\u00ae Dividend\u00ae Card for College Students",
-            "original_title": "Citi\u00ae Dividend\u00ae Card for College Students",
+            "title": "Citi Dividend Card for College Students",
+            "original_title": "Citi Dividend Card for College Students",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -7627,12 +7696,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Business Card": [
+    "Visa Business Card": [
         135,
         {
             "_id": "5e690b260b077d5830cae503",
-            "title": "Visa\u00ae Business Card",
-            "original_title": "Visa\u00ae Business Card",
+            "title": "Visa Business Card",
+            "original_title": "Visa Business Card",
             "fee": 0,
             "url": "http://www.harborstone.com/home/businessloans/buscards",
             "foreign_fee": true,
@@ -7679,7 +7748,7 @@ data = {
                     "title": "Earn 2% back on eating out and other gas purchases."
                 },
                 {
-                    "title": "Earn 10\u00a2 off/ gallon at BJ's Gas\u00ae every day."
+                    "title": "Earn 10 off/ gallon at BJ's Gas every day."
                 },
                 {
                     "title": "Earn 1% back on other non-BJ's purchases everywhere else MasterCard is accepted."
@@ -7719,12 +7788,12 @@ data = {
             }
         }
     ],
-    "Business Preferred World MasterCard\u00ae": [
+    "Business Preferred World MasterCard": [
         9,
         {
             "_id": "5e690b260b077d5830cadbb6",
-            "title": "Business Preferred World MasterCard\u00ae",
-            "original_title": "Business Preferred World MasterCard\u00ae",
+            "title": "Business Preferred World MasterCard",
+            "original_title": "Business Preferred World MasterCard",
             "fee": 125,
             "url": "https://business.bankofamerica.com/creditcard/products/business-preferred-charge-card",
             "foreign_fee": true,
@@ -7756,12 +7825,12 @@ data = {
             }
         }
     ],
-    "Delta SkyMiles\u00ae Business Credit Card from American Express": [
+    "Delta SkyMiles Business Credit Card from American Express": [
         9,
         {
             "_id": "5e690b260b077d5830cadd42",
-            "title": "Delta SkyMiles\u00ae Business Credit Card from American Express",
-            "original_title": "Delta SkyMiles\u00ae Business Credit Card from American Express",
+            "title": "Delta SkyMiles Business Credit Card from American Express",
+            "original_title": "Delta SkyMiles Business Credit Card from American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "",
@@ -7830,7 +7899,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadd47",
             "title": "Delta SkyMiles Reserve  Business American Express Card",
-            "original_title": "Delta SkyMiles\u00ae Reserve Business American Express Card",
+            "original_title": "Delta SkyMiles Reserve Business American Express Card",
             "nickname": "AMEX",
             "fee": 550,
             "url": "https://www.americanexpress.com/en-us/business/credit-cards/delta-skymiles-reserve",
@@ -7841,37 +7910,37 @@ data = {
                     "title": "You can check you first bag for free and save up to $60 on a round trip Delta flight."
                 },
                 {
-                    "title": "With complimentary access into Delta Sky Club\u00ae, you can relax before your Delta flight, or find downtime between connections. You'll also receive two Delta Sky Club One-Time Guest Passes each year so you can share the experience with others when you're traveling together."
+                    "title": "With complimentary access into Delta Sky Club, you can relax before your Delta flight, or find downtime between connections. You'll also receive two Delta Sky Club One-Time Guest Passes each year so you can share the experience with others when you're traveling together."
                 },
                 {
                     "title": "With Status Boost, earn 15,000 Medallion Qualification Miles (MQMs) after you spend $30,000 in purchases on your Card in a calendar year, up to four times per year getting you closer to Medallion Status. MQMs are used to determine Medallion Status and are different from the miles you earn towards flights."
                 },
                 {
-                    "title": "Travel more comfortably knowing you can be covered by the Baggage Insurance Plan\u2666 for eligible lost, damaged, or stolen baggage when you purchase the entire fare for a Common Carrier ticket (e.g. plane, train, ship, or bus) on your eligible Card. Coverage can be provided for up to $1,250 for carry-on baggage and up to $500 for checked baggage. For New York State residents, there is a $10,000 aggregate maximum limit for all Covered Persons per Covered Trip."
+                    "title": "Travel more comfortably knowing you can be covered by the Baggage Insurance Plan for eligible lost, damaged, or stolen baggage when you purchase the entire fare for a Common Carrier ticket (e.g. plane, train, ship, or bus) on your eligible Card. Coverage can be provided for up to $1,250 for carry-on baggage and up to $500 for checked baggage. For New York State residents, there is a $10,000 aggregate maximum limit for all Covered Persons per Covered Trip."
                 },
                 {
-                    "title": "Receive either a $100 statement credit for Global Entry or an $85 credit for TSA Pre\u2713\u00ae. Only one credit will be given in a 4 year period for Global Entry or in a 4.5 year period for TSA Pre\u2713\u00ae, depending on whichever application fee is charged to your Card first."
+                    "title": "Receive either a $100 statement credit for Global Entry or an $85 credit for TSA Pre. Only one credit will be given in a 4 year period for Global Entry or in a 4.5 year period for TSA Pre, depending on whichever application fee is charged to your Card first."
                 },
                 {
-                    "title": "If a round-trip is paid for entirely with your eligible Card on or after January 1, 2020, and a covered reason delays your trip more than 12 hours, Trip Delay Insurance\u2021 can help reimburse your unexpected expenses up to $300 per trip, maximum 2 claims per purchased on the eligible Card per 12 consecutive month period."
+                    "title": "If a round-trip is paid for entirely with your eligible Card on or after January 1, 2020, and a covered reason delays your trip more than 12 hours, Trip Delay Insurance can help reimburse your unexpected expenses up to $300 per trip, maximum 2 claims per purchased on the eligible Card per 12 consecutive month period."
                 },
                 {
-                    "title": "If a round-trip is paid for entirely with your eligible Card on or after January 1, 2020 and a covered reason cancels or interrupts your trip, Trip Cancellation and Interruption Insurance\u2021 can help reimburse the non-refundable travel expenses purchased with your eligible Card, up to $10,000 per trip and up to $20,000 per eligible Card per 12 consecutive month period."
+                    "title": "If a round-trip is paid for entirely with your eligible Card on or after January 1, 2020 and a covered reason cancels or interrupts your trip, Trip Cancellation and Interruption Insurance can help reimburse the non-refundable travel expenses purchased with your eligible Card, up to $10,000 per trip and up to $20,000 per eligible Card per 12 consecutive month period."
                 },
                 {
                     "title": "Enjoy early boarding on Delta flights as a benefit of Card Membership. You can board your flight when Main Cabin 1 priority boarding is called, so that you find room for your carry-on bag and settle into your seat sooner."
                 },
                 {
-                    "title": "Enjoy complimentary access to The Centurion\u00ae Lounge when you book your Delta flight with your Reserve Card\u2021"
+                    "title": "Enjoy complimentary access to The Centurion Lounge when you book your Delta flight with your Reserve Card"
                 },
                 {
-                    "title": "Enjoy a Domestic First Class, Delta Comfort+\u00ae or Main Cabin round-trip companion certificate each year upon renewal of your Delta SkyMiles Reserve Business Card."
+                    "title": "Enjoy a Domestic First Class, Delta Comfort+ or Main Cabin round-trip companion certificate each year upon renewal of your Delta SkyMiles Reserve Business Card."
                 },
                 {
                     "title": "Earn 80,000 bonus miles and 20,000 MQMs after you spend $5,000 in purchases on your new Card in your first 3 months. Plus, earn an additional 20,000 bonus miles after your first anniversary of Card Membership."
                 },
                 {
-                    "title": "Complimentary access into the Delta SkyClubs\u00ae for you when flying on Delta"
+                    "title": "Complimentary access into the Delta SkyClubs for you when flying on Delta"
                 },
                 {
                     "title": "As a Card Member, you can be covered if your eligible rental car is damaged or stolen when you use your eligible Card to reserve and pay for the entire eligible vehicle rental and decline the collision damage waiver at the rental car counter. Please read important exclusions and restrictions. Not all vehicle types or rentals are covered. Coverage is not available in Australia, Italy, and New Zealand. This product provides secondary coverage and does not include liability coverage."
@@ -7980,12 +8049,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Signature Bonus Rewards Card": [
+    "Visa Signature Bonus Rewards Card": [
         76,
         {
             "_id": "5e690b260b077d5830cae529",
-            "title": "Visa\u00ae Signature Bonus Rewards Card",
-            "original_title": "Visa\u00ae Signature Bonus Rewards Card",
+            "title": "Visa Signature Bonus Rewards Card",
+            "original_title": "Visa Signature Bonus Rewards Card",
             "fee": 0,
             "url": "https://online1.elancard.com/oad/catalog/landing.controller?locationCode=7712&preparerType=customer",
             "foreign_fee": true,
@@ -8014,12 +8083,12 @@ data = {
             }
         }
     ],
-    "Platinum Card\u00ae from American Express Exclusively for Morgan Stanley": [
+    "Platinum Card from American Express Exclusively for Morgan Stanley": [
         10,
         {
             "_id": "5e690b260b077d5830cae09a",
-            "title": "Platinum Card\u00ae from American Express Exclusively for Morgan Stanley",
-            "original_title": "Platinum Card\u00ae from American Express Exclusively for Morgan Stanley",
+            "title": "Platinum Card from American Express Exclusively for Morgan Stanley",
+            "original_title": "Platinum Card from American Express Exclusively for Morgan Stanley",
             "nickname": "AMEX",
             "fee": 450,
             "url": "https://www262.americanexpress.com/dapply/web/ccsg/apply/api/prospect/morgan-stanley-platinum-card/MS/1000/1?intlink=us-ccsg-microsite-morganstanley-plat-apply-top",
@@ -8027,10 +8096,10 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 2 Membership Rewards\u00ae points for each dollar of eligible purchases made when you book on the American Express Travel website."
+                    "title": "Earn 2 Membership Rewards points for each dollar of eligible purchases made when you book on the American Express Travel website."
                 },
                 {
-                    "title": "Earn 1 Membership Rewards\u00ae point for each dollar you spend on eligible purchases."
+                    "title": "Earn 1 Membership Rewards point for each dollar you spend on eligible purchases."
                 }
             ],
             "earnings": [],
@@ -8052,12 +8121,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Platinum": [
+    "Visa Platinum": [
         119,
         {
             "_id": "5e690b260b077d5830cae511",
-            "title": "Visa\u00ae Platinum",
-            "original_title": "Visa\u00ae Platinum",
+            "title": "Visa Platinum",
+            "original_title": "Visa Platinum",
             "fee": 0,
             "url": "https://www.fairwinds.org/personal/personalcards/credit.asp",
             "foreign_fee": true,
@@ -8086,12 +8155,12 @@ data = {
             }
         }
     ],
-    "AeroMexico Visa\u00ae Card": [
+    "AeroMexico Visa Card": [
         10,
         {
             "_id": "5e690b260b077d5830cada4f",
-            "title": "AeroMexico Visa\u00ae Card",
-            "original_title": "AeroMexico Visa\u00ae Card",
+            "title": "AeroMexico Visa Card",
+            "original_title": "AeroMexico Visa Card",
             "fee": 45,
             "url": "https://www.usbank.com/credit-cards/aeromexico-visa-credit-card.html",
             "foreign_fee": true,
@@ -8282,12 +8351,12 @@ data = {
             }
         }
     ],
-    "Citi\u00ae Dividend American Express\u00ae": [
+    "Citi Dividend American Express": [
         10,
         {
             "_id": "5e690b260b077d5830cadc70",
-            "title": "Citi\u00ae Dividend American Express\u00ae",
-            "original_title": "Citi\u00ae Dividend American Express\u00ae",
+            "title": "Citi Dividend American Express",
+            "original_title": "Citi Dividend American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "",
@@ -8547,7 +8616,7 @@ data = {
             "rewards_type": 1,
             "rewards": [
                 {
-                    "title": "You'll get ID theft alerts, credit card replacement and ID Theft Affidavit assistance if you're the victim of identity theft \u2013 at no cost to you."
+                    "title": "You'll get ID theft alerts, credit card replacement and ID Theft Affidavit assistance if you're the victim of identity theft  at no cost to you."
                 },
                 {
                     "title": "If you buy an item with your card and the price drops within 60 days, you may be reimbursed for the difference."
@@ -8584,12 +8653,12 @@ data = {
             }
         }
     ],
-    "Visa Signature\u00ae Bonus Rewards PLUS": [
+    "Visa Signature Bonus Rewards PLUS": [
         62,
         {
             "_id": "5e690b260b077d5830cae4d0",
-            "title": "Visa Signature\u00ae Bonus Rewards PLUS",
-            "original_title": "Visa Signature\u00ae Bonus Rewards PLUS",
+            "title": "Visa Signature Bonus Rewards PLUS",
+            "original_title": "Visa Signature Bonus Rewards PLUS",
             "fee": 50,
             "url": "https://www.ibc.com/en-us/personal/Pages/IBCCreditCards.aspx",
             "foreign_fee": true,
@@ -8757,12 +8826,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Platinum Card": [
+    "Visa Platinum Card": [
         141,
         {
             "_id": "5e690b260b077d5830cae523",
-            "title": "Visa\u00ae Platinum Card",
-            "original_title": "Visa\u00ae Platinum Card",
+            "title": "Visa Platinum Card",
+            "original_title": "Visa Platinum Card",
             "fee": 0,
             "url": "https://online1.elancard.com/oad/apply/begin?productId=20",
             "foreign_fee": true,
@@ -8791,12 +8860,12 @@ data = {
             }
         }
     ],
-    "Secured Visa\u00ae Card": [
+    "Secured Visa Card": [
         134,
         {
             "_id": "5e690b260b077d5830cae268",
-            "title": "Secured Visa\u00ae Card",
-            "original_title": "Secured Visa\u00ae Card",
+            "title": "Secured Visa Card",
+            "original_title": "Secured Visa Card",
             "fee": 35,
             "url": "https://www.chevronfcu.org/consumer-loans/credit-cards",
             "foreign_fee": true,
@@ -8889,13 +8958,13 @@ data = {
                     "title": "Gas rewards are not considered due to variability in prices."
                 },
                 {
-                    "title": "25\u00a2/gallon rebate after spending over $1000."
+                    "title": "25/gallon rebate after spending over $1000."
                 },
                 {
-                    "title": "15\u00a2/gallon rebate from $500-999."
+                    "title": "15/gallon rebate from $500-999."
                 },
                 {
-                    "title": "15\u00a2/gallon rebate below $500."
+                    "title": "15/gallon rebate below $500."
                 }
             ],
             "earnings": [],
@@ -9024,12 +9093,12 @@ data = {
             }
         }
     ],
-    "BankAmericard\u00ae Credit Card for Students": [
+    "BankAmericard Credit Card for Students": [
         11,
         {
             "_id": "5e690b260b077d5830cadb04",
-            "title": "BankAmericard\u00ae Credit Card for Students",
-            "original_title": "BankAmericard\u00ae Credit Card for Students",
+            "title": "BankAmericard Credit Card for Students",
+            "original_title": "BankAmericard Credit Card for Students",
             "fee": 0,
             "url": "https://www.bankofamerica.com/credit-cards/products/low-interest-student-credit-card.go",
             "foreign_fee": true,
@@ -9231,12 +9300,12 @@ data = {
             }
         }
     ],
-    "Pink Netspend\u00ae Visa\u00ae Prepaid Card": [
+    "Pink Netspend Visa Prepaid Card": [
         11,
         {
             "_id": "5e690b260b077d5830cadfd2",
-            "title": "Pink Netspend\u00ae Visa\u00ae Prepaid Card",
-            "original_title": "Pink Netspend\u00ae Visa\u00ae Prepaid Card",
+            "title": "Pink Netspend Visa Prepaid Card",
+            "original_title": "Pink Netspend Visa Prepaid Card",
             "fee": 0,
             "url": "",
             "foreign_fee": false,
@@ -9258,7 +9327,7 @@ data = {
                     "title": "Get your tax refund direct deposited to your account and no more waiting in line to cash your check!"
                 },
                 {
-                    "title": "Card issued by MetaBank\u00ae, Member FDIC. Card may be used everywhere Visa Debit cards are accepted. \"Apply Now\" for full details."
+                    "title": "Card issued by MetaBank, Member FDIC. Card may be used everywhere Visa Debit cards are accepted. \"Apply Now\" for full details."
                 }
             ],
             "earnings": [
@@ -9286,12 +9355,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Bonus Rewards Card": [
+    "Visa Bonus Rewards Card": [
         93,
         {
             "_id": "5e690b260b077d5830cae4e5",
-            "title": "Visa\u00ae Bonus Rewards Card",
-            "original_title": "Visa\u00ae Bonus Rewards Card",
+            "title": "Visa Bonus Rewards Card",
+            "original_title": "Visa Bonus Rewards Card",
             "fee": 0,
             "url": "https://www.associatedbank.com/personal/bank/credit-debit-gift-cards/credit-cards",
             "foreign_fee": true,
@@ -9808,12 +9877,12 @@ data = {
             }
         }
     ],
-    "Cash Rewards American Express\u00ae Card": [
+    "Cash Rewards American Express Card": [
         77,
         {
             "_id": "5e690b260b077d5830cadbff",
-            "title": "Cash Rewards American Express\u00ae Card",
-            "original_title": "Cash Rewards American Express\u00ae Card",
+            "title": "Cash Rewards American Express Card",
+            "original_title": "Cash Rewards American Express Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.johnsonbank.com/Personal/Banking/CreditCards",
@@ -9846,12 +9915,12 @@ data = {
             }
         }
     ],
-    "Visa Signature\u00ae Bonus Rewards Card": [
+    "Visa Signature Bonus Rewards Card": [
         122,
         {
             "_id": "5e690b260b077d5830cae4c9",
-            "title": "Visa Signature\u00ae Bonus Rewards Card",
-            "original_title": "Visa Signature\u00ae Bonus Rewards Card",
+            "title": "Visa Signature Bonus Rewards Card",
+            "original_title": "Visa Signature Bonus Rewards Card",
             "fee": 0,
             "url": "https://online1.elancard.com/oad/apply/begin?productId=05",
             "foreign_fee": true,
@@ -10345,12 +10414,12 @@ data = {
             }
         }
     ],
-    "University of Wisconsin-Milwaukee Visa\u00ae Signature": [
+    "University of Wisconsin-Milwaukee Visa Signature": [
         13,
         {
             "_id": "5e690b260b077d5830cae3b5",
-            "title": "University of Wisconsin-Milwaukee Visa\u00ae Signature",
-            "original_title": "University of Wisconsin-Milwaukee Visa\u00ae Signature",
+            "title": "University of Wisconsin-Milwaukee Visa Signature",
+            "original_title": "University of Wisconsin-Milwaukee Visa Signature",
             "fee": 0,
             "url": "https://applications.usbank.com/oad/apply/begin?productId=05&sourceCode=72026",
             "foreign_fee": true,
@@ -10379,12 +10448,12 @@ data = {
             }
         }
     ],
-    "REI Visa\u00ae Card": [
+    "REI Visa Card": [
         13,
         {
             "_id": "5e690b260b077d5830cae1cc",
-            "title": "REI Visa\u00ae Card",
-            "original_title": "REI Visa\u00ae Card",
+            "title": "REI Visa Card",
+            "original_title": "REI Visa Card",
             "fee": 0,
             "url": "http://www.reivisa.com/",
             "foreign_fee": true,
@@ -10416,12 +10485,12 @@ data = {
             }
         }
     ],
-    "People's Mastercard\u00ae Platinum Card": [
+    "People's Mastercard Platinum Card": [
         13,
         {
             "_id": "5e690b260b077d5830cadfc6",
-            "title": "People's Mastercard\u00ae Platinum Card",
-            "original_title": "People's Mastercard\u00ae Platinum Card",
+            "title": "People's Mastercard Platinum Card",
+            "original_title": "People's Mastercard Platinum Card",
             "fee": 0,
             "url": "https://www.peoples.com/personal/credit-cards",
             "foreign_fee": true,
@@ -10732,12 +10801,12 @@ data = {
             }
         }
     ],
-    "United MileagePlus\u00ae Club Card": [
+    "United MileagePlus Club Card": [
         14,
         {
             "_id": "5e690b260b077d5830cae39a",
-            "title": "United MileagePlus\u00ae Club Card",
-            "original_title": "United MileagePlus\u00ae Club Card",
+            "title": "United MileagePlus Club Card",
+            "original_title": "United MileagePlus Club Card",
             "fee": 395,
             "url": "https://creditcards.chase.com/credit-cards/united-club-credit-card.aspx",
             "foreign_fee": true,
@@ -10780,19 +10849,19 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Tap to redeem rewards on the go \u2013 Redeem points for Uber Cash, gift cards, or cash back with a simple tap."
+                    "title": "Tap to redeem rewards on the go  Redeem points for Uber Cash, gift cards, or cash back with a simple tap."
                 },
                 {
-                    "title": "Stream all day with a $50 statement credit \u2013 Up to a $50 statement credit for online subscription services after you spend $5,000 or more on your card per year."
+                    "title": "Stream all day with a $50 statement credit  Up to a $50 statement credit for online subscription services after you spend $5,000 or more on your card per year."
                 },
                 {
-                    "title": "No foreign transaction fees \u2013 Use your card outside the U.S. with no hidden fee."
+                    "title": "No foreign transaction fees  Use your card outside the U.S. with no hidden fee."
                 },
                 {
                     "title": "Help protect your phone from the unexpected - Up to $600 for mobile phone damage or theft when you pay your mobile phone bill with your card."
                 },
                 {
-                    "title": "Exclusive access to exclusive events \u2013 Receive invites to exclusive events and offers in select U.S. cities."
+                    "title": "Exclusive access to exclusive events  Receive invites to exclusive events and offers in select U.S. cities."
                 },
                 {
                     "title": "4% back on dining. Restaurants, takeout, and bars, including UberEATS."
@@ -11282,12 +11351,12 @@ data = {
             }
         }
     ],
-    "Barclaycard\u00ae Rewards MasterCard\u00ae (Legacy)": [
+    "Barclaycard Rewards MasterCard (Legacy)": [
         15,
         {
             "_id": "5e690b260b077d5830cadb0c",
-            "title": "Barclaycard\u00ae Rewards MasterCard\u00ae (Legacy)",
-            "original_title": "Barclaycard\u00ae Rewards MasterCard\u00ae (Legacy)",
+            "title": "Barclaycard Rewards MasterCard (Legacy)",
+            "original_title": "Barclaycard Rewards MasterCard (Legacy)",
             "fee": 0,
             "url": "https://www.barclaycardus.com/",
             "foreign_fee": true,
@@ -11422,12 +11491,12 @@ data = {
             }
         }
     ],
-    "Cathay Bank Maximum Rewards\u00ae Visa": [
+    "Cathay Bank Maximum Rewards Visa": [
         15,
         {
             "_id": "5e690b260b077d5830cadc11",
-            "title": "Cathay Bank Maximum Rewards\u00ae Visa",
-            "original_title": "Cathay Bank Maximum Rewards\u00ae Visa",
+            "title": "Cathay Bank Maximum Rewards Visa",
+            "original_title": "Cathay Bank Maximum Rewards Visa",
             "fee": 0,
             "url": "https://www.firstbankcard.com/common/dynamicapp/web/cathay/learnmore_visamax.html",
             "foreign_fee": true,
@@ -11527,12 +11596,12 @@ data = {
             }
         }
     ],
-    "ATIRAcredit Rewards MasterCard\u00ae": [
+    "ATIRAcredit Rewards MasterCard": [
         15,
         {
             "_id": "5e690b260b077d5830cadadd",
-            "title": "ATIRAcredit Rewards MasterCard\u00ae",
-            "original_title": "ATIRAcredit Rewards MasterCard\u00ae",
+            "title": "ATIRAcredit Rewards MasterCard",
+            "original_title": "ATIRAcredit Rewards MasterCard",
             "fee": 0,
             "url": "https://www.extracreditunion.org/loans-to-builds-your-life/credit-card/",
             "foreign_fee": true,
@@ -11579,7 +11648,7 @@ data = {
                     "title": "Spending above $3,000.01 will earn 1% cash back."
                 },
                 {
-                    "title": "Save 5\u00a2 per gallon at participating Walmart gas stations in the U.S."
+                    "title": "Save 5 per gallon at participating Walmart gas stations in the U.S."
                 },
                 {
                     "title": "Qualified spending up to $1,500 will earn 0.25% cash back."
@@ -11637,12 +11706,12 @@ data = {
             }
         }
     ],
-    "UConn College Rewards Visa\u00ae Card": [
+    "UConn College Rewards Visa Card": [
         15,
         {
             "_id": "5e690b260b077d5830cae377",
-            "title": "UConn College Rewards Visa\u00ae Card",
-            "original_title": "UConn College Rewards Visa\u00ae Card",
+            "title": "UConn College Rewards Visa Card",
+            "original_title": "UConn College Rewards Visa Card",
             "fee": 0,
             "url": "https://online1.elancard.com/oad/apply/begin?productId=35",
             "foreign_fee": true,
@@ -11845,12 +11914,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Business Bonus Rewards Card": [
+    "Visa Business Bonus Rewards Card": [
         143,
         {
             "_id": "5e690b260b077d5830cae4eb",
-            "title": "Visa\u00ae Business Bonus Rewards Card",
-            "original_title": "Visa\u00ae Business Bonus Rewards Card",
+            "title": "Visa Business Bonus Rewards Card",
+            "original_title": "Visa Business Bonus Rewards Card",
             "fee": 0,
             "url": "https://online1.elancard.com/oad/catalog/learnMore.controller?productId=90",
             "foreign_fee": true,
@@ -11879,12 +11948,12 @@ data = {
             }
         }
     ],
-    "Citi Simplicity\u00ae Card (Legacy)": [
+    "Citi Simplicity Card (Legacy)": [
         16,
         {
             "_id": "5e690b260b077d5830cadc64",
-            "title": "Citi Simplicity\u00ae Card (Legacy)",
-            "original_title": "Citi Simplicity\u00ae Card (Legacy)",
+            "title": "Citi Simplicity Card (Legacy)",
+            "original_title": "Citi Simplicity Card (Legacy)",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -11918,7 +11987,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadd46",
             "title": "Delta SkyMiles Platinum Business American Express Card",
-            "original_title": "Delta SkyMiles\u00ae Platinum Business American Express Card",
+            "original_title": "Delta SkyMiles Platinum Business American Express Card",
             "nickname": "AMEX",
             "fee": 250,
             "url": "https://www.americanexpress.com/en-us/business/credit-cards/delta-skymiles-platinum",
@@ -11932,7 +12001,7 @@ data = {
                     "title": "First Checked Bag Free"
                 },
                 {
-                    "title": "Earn more miles on big purchases with 1.5 miles per dollar on single eligible purchases over $5,000 (that\u2019s an extra half mile per dollar), up to 50,000 additional miles per year."
+                    "title": "Earn more miles on big purchases with 1.5 miles per dollar on single eligible purchases over $5,000 (thats an extra half mile per dollar), up to 50,000 additional miles per year."
                 },
                 {
                     "title": "Companion Certificate upon renewal"
@@ -12157,12 +12226,12 @@ data = {
             }
         }
     ],
-    "U.S. Bank FlexPerks\u00ae Business Edge(TM) Travel Rewards Visa\u00ae card": [
+    "U.S. Bank FlexPerks Business Edge(TM) Travel Rewards Visa card": [
         16,
         {
             "_id": "5e690b260b077d5830cae363",
-            "title": "U.S. Bank FlexPerks\u00ae Business Edge(TM) Travel Rewards Visa\u00ae card",
-            "original_title": "U.S. Bank FlexPerks\u00ae Business Edge(TM) Travel Rewards Visa\u00ae card",
+            "title": "U.S. Bank FlexPerks Business Edge(TM) Travel Rewards Visa card",
+            "original_title": "U.S. Bank FlexPerks Business Edge(TM) Travel Rewards Visa card",
             "fee": 55,
             "url": "http://www.usbankedge.com/credit/FlexPerks-business-edge-travel-rewards.do",
             "foreign_fee": true,
@@ -12172,7 +12241,7 @@ data = {
                     "title": "Triple FlexPoints for qualifying charitable donations"
                 },
                 {
-                    "title": "Receive an airline travel allowance of up to $25 with every award ticket \u2014 to use for possible baggage fees, in-flight food or drinks and more"
+                    "title": "Receive an airline travel allowance of up to $25 with every award ticket  to use for possible baggage fees, in-flight food or drinks and more"
                 },
                 {
                     "title": "One FlexPoint for every $1 of eligible Net Purchases charged to your Card"
@@ -12190,7 +12259,7 @@ data = {
                     "title": "Double FlexPoints on most cell phone expenses"
                 },
                 {
-                    "title": "Double FlexPoints for every $1 spent on gas, office supply or airline purchases \u2014 whichever you spend most on each monthly billing cycle"
+                    "title": "Double FlexPoints for every $1 spent on gas, office supply or airline purchases  whichever you spend most on each monthly billing cycle"
                 },
                 {
                     "title": "Book award flights on more than 150 airlines with no blackout dates or online redemption fees, starting at just 20,000 FlexPoints for one round-trip ticket (up to $400 value)"
@@ -12199,17 +12268,17 @@ data = {
             "earnings": [
                 {
                     "points": 2,
-                    "description": "Double FlexPoints for every $1 spent on gas, office supply or airline purchases \u2014 whichever you spend most on each monthly billing cycle",
+                    "description": "Double FlexPoints for every $1 spent on gas, office supply or airline purchases  whichever you spend most on each monthly billing cycle",
                     "category": 1
                 },
                 {
                     "points": 2,
-                    "description": "Double FlexPoints for every $1 spent on gas, office supply or airline purchases \u2014 whichever you spend most on each monthly billing cycle",
+                    "description": "Double FlexPoints for every $1 spent on gas, office supply or airline purchases  whichever you spend most on each monthly billing cycle",
                     "category": 8
                 },
                 {
                     "points": 2,
-                    "description": "Double FlexPoints for every $1 spent on gas, office supply or airline purchases \u2014 whichever you spend most on each monthly billing cycle",
+                    "description": "Double FlexPoints for every $1 spent on gas, office supply or airline purchases  whichever you spend most on each monthly billing cycle",
                     "category": 11
                 },
                 {
@@ -12269,12 +12338,12 @@ data = {
             }
         }
     ],
-    "Blaze MasterCard\u00ae Credit Card": [
+    "Blaze MasterCard Credit Card": [
         16,
         {
             "_id": "5e690b260b077d5830cadb2e",
-            "title": "Blaze MasterCard\u00ae Credit Card",
-            "original_title": "Blaze MasterCard\u00ae Credit Card",
+            "title": "Blaze MasterCard Credit Card",
+            "original_title": "Blaze MasterCard Credit Card",
             "fee": 0,
             "url": "https://blazecc.com/",
             "foreign_fee": true,
@@ -12483,12 +12552,12 @@ data = {
             }
         }
     ],
-    "BankAmericard\u00ae Power Rewards\u00ae Credit Card": [
+    "BankAmericard Power Rewards Credit Card": [
         17,
         {
             "_id": "5e690b260b077d5830cadb05",
-            "title": "BankAmericard\u00ae Power Rewards\u00ae Credit Card",
-            "original_title": "BankAmericard\u00ae Power Rewards\u00ae Credit Card",
+            "title": "BankAmericard Power Rewards Credit Card",
+            "original_title": "BankAmericard Power Rewards Credit Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -12517,12 +12586,12 @@ data = {
             }
         }
     ],
-    "PenFed Premium Travel Rewards American Express\u00ae Card": [
+    "PenFed Premium Travel Rewards American Express Card": [
         17,
         {
             "_id": "5e690b260b077d5830cadfc0",
-            "title": "PenFed Premium Travel Rewards American Express\u00ae Card",
-            "original_title": "PenFed Premium Travel Rewards American Express\u00ae Card",
+            "title": "PenFed Premium Travel Rewards American Express Card",
+            "original_title": "PenFed Premium Travel Rewards American Express Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.penfed.org/penfed-premium-travel-rewards-american-express-card/",
@@ -12600,12 +12669,12 @@ data = {
             }
         }
     ],
-    "Ink Bold\u00ae Business Charge Card": [
+    "Ink Bold Business Charge Card": [
         128,
         {
             "_id": "5e690b260b077d5830cade78",
-            "title": "Ink Bold\u00ae Business Charge Card",
-            "original_title": "Ink Bold\u00ae Business Charge Card",
+            "title": "Ink Bold Business Charge Card",
+            "original_title": "Ink Bold Business Charge Card",
             "fee": 95,
             "url": "",
             "foreign_fee": true,
@@ -12743,7 +12812,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadbdb",
             "title": "Capital One Quicksilver Cash Rewards Credit Card",
-            "original_title": "Capital One\u00ae Quicksilver\u00ae Cash Rewards Credit Card",
+            "original_title": "Capital One Quicksilver Cash Rewards Credit Card",
             "fee": 0,
             "url": "https://www.capitalone.com/credit-cards/quicksilver/",
             "foreign_fee": false,
@@ -12891,12 +12960,12 @@ data = {
             }
         }
     ],
-    "The Business Platinum Card\u00ae from American Express OPEN": [
+    "The Business Platinum Card from American Express OPEN": [
         17,
         {
             "_id": "5e690b260b077d5830cae322",
-            "title": "The Business Platinum Card\u00ae from American Express OPEN",
-            "original_title": "The Business Platinum Card\u00ae from American Express OPEN",
+            "title": "The Business Platinum Card from American Express OPEN",
+            "original_title": "The Business Platinum Card from American Express OPEN",
             "nickname": "AMEX",
             "fee": 595,
             "url": "https://www.americanexpress.com/us/credit-cards/card-application/apply/business-platinum-charge-card/30215-9-0#/",
@@ -12904,16 +12973,16 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "You can receive one Global Entry ($100) statement credit or one TSA Pre\u2713\u00ae ($85) statement credit every 4 years for an application fee charged to your Business Platinum Card."
+                    "title": "You can receive one Global Entry ($100) statement credit or one TSA Pre ($85) statement credit every 4 years for an application fee charged to your Business Platinum Card."
                 },
                 {
-                    "title": "With your Business Platinum Card\u00ae, enjoy complimentary access to over 900 airport lounges, including The Centurion\u00ae lounge network, Delta Sky Clubs\u00ae, and Airspace Lounges. You can also enroll in Priority Pass\u2122 Select, on us."
+                    "title": "With your Business Platinum Card, enjoy complimentary access to over 900 airport lounges, including The Centurion lounge network, Delta Sky Clubs, and Airspace Lounges. You can also enroll in Priority Pass Select, on us."
                 },
                 {
-                    "title": "When an American Express\u00ae Card Member charges an eligible product with his or her Card account, Extended Warranty\u2666 can provide up to two extra years* added to the original U.S. manufacturer\u2019s warranty."
+                    "title": "When an American Express Card Member charges an eligible product with his or her Card account, Extended Warranty can provide up to two extra years* added to the original U.S. manufacturers warranty."
                 },
                 {
-                    "title": "Select one qualifying airline to get started. Then receive up to $200 in statement credits per calendar year when incidental fees, such as checked bags and in-flight refreshments, are charged by the airline to your Business Platinum Card\u00ae Account"
+                    "title": "Select one qualifying airline to get started. Then receive up to $200 in statement credits per calendar year when incidental fees, such as checked bags and in-flight refreshments, are charged by the airline to your Business Platinum Card Account"
                 },
                 {
                     "title": "No Foreign Transaction Fees."
@@ -12928,13 +12997,13 @@ data = {
                     "title": "Get a $75 hotel credit on qualifying charges, plus a room upgrade upon arrival, when available with The Hotel Collection."
                 },
                 {
-                    "title": "Enroll to enjoy the benefits of complimentary Hilton Honors\u2122 Gold Status without having to meet any stay requirements."
+                    "title": "Enroll to enjoy the benefits of complimentary Hilton Honors Gold Status without having to meet any stay requirements."
                 },
                 {
-                    "title": "Earn 50,000 Membership Rewards\u00ae points after you spend $10,000 and an extra 25,000 points after you spend an additional $10,000 all on qualifying purchases on the Business Platinum Card, within your first 3 months of Card Membership"
+                    "title": "Earn 50,000 Membership Rewards points after you spend $10,000 and an extra 25,000 points after you spend an additional $10,000 all on qualifying purchases on the Business Platinum Card, within your first 3 months of Card Membership"
                 },
                 {
-                    "title": "As a Business Platinum Card Member, you can upgrade to Marriott Bonvoy\u2122 Gold Elite Status without meeting any stay requirements."
+                    "title": "As a Business Platinum Card Member, you can upgrade to Marriott Bonvoy Gold Elite Status without meeting any stay requirements."
                 },
                 {
                     "title": "1.5 Points per Dollar on each eligible purchase of $5,000 or more (that's an extra half point per dollar). Up to 1 million additional points per year."
@@ -13130,12 +13199,12 @@ data = {
             }
         }
     ],
-    "OpenSky\u00ae Secured Visa\u00ae Credit Card": [
+    "OpenSky Secured Visa Credit Card": [
         18,
         {
             "_id": "5e690b260b077d5830cadfa5",
-            "title": "OpenSky\u00ae Secured Visa\u00ae Credit Card",
-            "original_title": "OpenSky\u00ae Secured Visa\u00ae Credit Card",
+            "title": "OpenSky Secured Visa Credit Card",
+            "original_title": "OpenSky Secured Visa Credit Card",
             "fee": 29,
             "url": "https://www.openskycc.com/pages/applicationscreen1.aspx",
             "foreign_fee": true,
@@ -13357,12 +13426,12 @@ data = {
             }
         }
     ],
-    "Cathay Bank Visa\u00ae Platinum Bonus Rewards Card": [
+    "Cathay Bank Visa Platinum Bonus Rewards Card": [
         18,
         {
             "_id": "5e690b260b077d5830cadc13",
-            "title": "Cathay Bank Visa\u00ae Platinum Bonus Rewards Card",
-            "original_title": "Cathay Bank Visa\u00ae Platinum Bonus Rewards Card",
+            "title": "Cathay Bank Visa Platinum Bonus Rewards Card",
+            "original_title": "Cathay Bank Visa Platinum Bonus Rewards Card",
             "fee": 0,
             "url": "https://www.cathaybank.com/Personal/Credit-Cards",
             "foreign_fee": true,
@@ -13425,12 +13494,12 @@ data = {
             }
         }
     ],
-    "The Platinum Card\u00ae from American Express for Goldman Sachs": [
+    "The Platinum Card from American Express for Goldman Sachs": [
         18,
         {
             "_id": "5e690b260b077d5830cae330",
-            "title": "The Platinum Card\u00ae from American Express for Goldman Sachs",
-            "original_title": "The Platinum Card\u00ae from American Express for Goldman Sachs",
+            "title": "The Platinum Card from American Express for Goldman Sachs",
+            "original_title": "The Platinum Card from American Express for Goldman Sachs",
             "nickname": "AMEX",
             "fee": 450,
             "url": "https://www.americanexpress.com/us/content/cardmember-agreements/goldman-sachs-platinum-card.html",
@@ -13438,10 +13507,10 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 2 Membership Rewards\u00ae points for each dollar of eligible purchases made when you book on the American Express Travel website."
+                    "title": "Earn 2 Membership Rewards points for each dollar of eligible purchases made when you book on the American Express Travel website."
                 },
                 {
-                    "title": "Earn 1 Membership Rewards\u00ae point for each dollar you spend on eligible purchases."
+                    "title": "Earn 1 Membership Rewards point for each dollar you spend on eligible purchases."
                 }
             ],
             "earnings": [],
@@ -13634,12 +13703,12 @@ data = {
             }
         }
     ],
-    "USAA Active Military World MasterCard\u00ae": [
+    "USAA Active Military World MasterCard": [
         18,
         {
             "_id": "5e690b260b077d5830cae3c1",
-            "title": "USAA Active Military World MasterCard\u00ae",
-            "original_title": "USAA Active Military World MasterCard\u00ae",
+            "title": "USAA Active Military World MasterCard",
+            "original_title": "USAA Active Military World MasterCard",
             "fee": 0,
             "url": "https://www.usaa.com/inet/pages/banking_credit_cards_active_military_world_mastercard",
             "foreign_fee": true,
@@ -13668,12 +13737,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Signature Bonus Rewards PLUS Card": [
+    "Visa Signature Bonus Rewards PLUS Card": [
         107,
         {
             "_id": "5e690b260b077d5830cae52b",
-            "title": "Visa\u00ae Signature Bonus Rewards PLUS Card",
-            "original_title": "Visa\u00ae Signature Bonus Rewards PLUS Card",
+            "title": "Visa Signature Bonus Rewards PLUS Card",
+            "original_title": "Visa Signature Bonus Rewards PLUS Card",
             "fee": 50,
             "url": "https://online1.elancard.com/oad/catalog/landing.controller?locationCode=7712&preparerType=customer",
             "foreign_fee": true,
@@ -13858,12 +13927,12 @@ data = {
             }
         }
     ],
-    "Schwab Bank Visa\u00ae Platinum Debit Card": [
+    "Schwab Bank Visa Platinum Debit Card": [
         19,
         {
             "_id": "5e690b260b077d5830cae204",
-            "title": "Schwab Bank Visa\u00ae Platinum Debit Card",
-            "original_title": "Schwab Bank Visa\u00ae Platinum Debit Card",
+            "title": "Schwab Bank Visa Platinum Debit Card",
+            "original_title": "Schwab Bank Visa Platinum Debit Card",
             "fee": 0,
             "url": "https://www.schwab.com/public/schwab/banking_lending/checking_account",
             "foreign_fee": false,
@@ -13969,12 +14038,12 @@ data = {
             }
         }
     ],
-    "Centurion\u00ae Card from American Express": [
+    "Centurion Card from American Express": [
         19,
         {
             "_id": "5e690b260b077d5830cadc1c",
-            "title": "Centurion\u00ae Card from American Express",
-            "original_title": "Centurion\u00ae Card from American Express",
+            "title": "Centurion Card from American Express",
+            "original_title": "Centurion Card from American Express",
             "nickname": "AMEX",
             "fee": 9,
             "url": "https://www.americanexpress.com/us/content/cardmember-agreements/centurion.html",
@@ -13982,10 +14051,10 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 3 Membership Rewards\u00ae points for each dollar of eligible purchases made when you book on the American Express Travel website."
+                    "title": "Earn 3 Membership Rewards points for each dollar of eligible purchases made when you book on the American Express Travel website."
                 },
                 {
-                    "title": "Earn 1 Membership Rewards\u00ae point for each dollar you spend on eligible purchases."
+                    "title": "Earn 1 Membership Rewards point for each dollar you spend on eligible purchases."
                 }
             ],
             "earnings": [],
@@ -14044,12 +14113,12 @@ data = {
             }
         }
     ],
-    "Visa Signature\u00ae Bonus Rewards PLUS Card": [
+    "Visa Signature Bonus Rewards PLUS Card": [
         117,
         {
             "_id": "5e690b260b077d5830cae4d7",
-            "title": "Visa Signature\u00ae Bonus Rewards PLUS Card",
-            "original_title": "Visa Signature\u00ae Bonus Rewards PLUS Card",
+            "title": "Visa Signature Bonus Rewards PLUS Card",
+            "original_title": "Visa Signature Bonus Rewards PLUS Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -14078,12 +14147,12 @@ data = {
             }
         }
     ],
-    "U.S. Coast Guard Alumni USAA Rewards\u2122 World MasterCard\u00ae": [
+    "U.S. Coast Guard Alumni USAA Rewards World MasterCard": [
         19,
         {
             "_id": "5e690b260b077d5830cae36b",
-            "title": "U.S. Coast Guard Alumni USAA Rewards\u2122 World MasterCard\u00ae",
-            "original_title": "U.S. Coast Guard Alumni USAA Rewards\u2122 World MasterCard\u00ae",
+            "title": "U.S. Coast Guard Alumni USAA Rewards World MasterCard",
+            "original_title": "U.S. Coast Guard Alumni USAA Rewards World MasterCard",
             "fee": 0,
             "url": "https://www.usaa.com/inet/pages/bank_credit_cards_military_affiliate_cgaalumni?akredirect=true",
             "foreign_fee": true,
@@ -14466,12 +14535,12 @@ data = {
             }
         }
     ],
-    "First Progress Platinum Select MasterCard\u00ae Secured Credit Card": [
+    "First Progress Platinum Select MasterCard Secured Credit Card": [
         20,
         {
             "_id": "5e690b260b077d5830caddb8",
-            "title": "First Progress Platinum Select MasterCard\u00ae Secured Credit Card",
-            "original_title": "First Progress Platinum Select MasterCard\u00ae Secured Credit Card",
+            "title": "First Progress Platinum Select MasterCard Secured Credit Card",
+            "original_title": "First Progress Platinum Select MasterCard Secured Credit Card",
             "fee": 39,
             "url": "https://apply.firstprogress.com/",
             "foreign_fee": true,
@@ -14617,7 +14686,7 @@ data = {
                     "title": "Earn 3 Points per Dollar on all Gander Mountain purchases, with 2 BONUS Points per Dollar on all Gander Mountain Purchases when you spend $10,000 a year on the card."
                 },
                 {
-                    "title": "Earn 2 Points per Dollar on Gas and Grocery purchases and earn 1 Point per Dollar everywhere else Mastercard\u00ae is accepted."
+                    "title": "Earn 2 Points per Dollar on Gas and Grocery purchases and earn 1 Point per Dollar everywhere else Mastercard is accepted."
                 }
             ],
             "earnings": [],
@@ -14863,13 +14932,13 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 5 ThankYou\u00ae Points for every $1 spent on eligible products/services purchased directly from AT&T."
+                    "title": "Earn 5 ThankYou Points for every $1 spent on eligible products/services purchased directly from AT&T."
                 },
                 {
-                    "title": "Earn 3 ThankYou\u00ae Points for every $1 spent on purchases at certain office supply merchants, gas stations and on professional services."
+                    "title": "Earn 3 ThankYou Points for every $1 spent on purchases at certain office supply merchants, gas stations and on professional services."
                 },
                 {
-                    "title": "Earn 1 ThankYou\u00ae Point for every $1 spent on other purchases."
+                    "title": "Earn 1 ThankYou Point for every $1 spent on other purchases."
                 }
             ],
             "earnings": [],
@@ -15366,7 +15435,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Monthly FICO\u00ae Score for Free"
+                    "title": "Monthly FICO Score for Free"
                 }
             ],
             "earnings": [],
@@ -15566,12 +15635,12 @@ data = {
             }
         }
     ],
-    "Discover it\u00ae chrome": [
+    "Discover it chrome": [
         22,
         {
             "_id": "5e690b260b077d5830cadd66",
-            "title": "Discover it\u00ae chrome",
-            "original_title": "Discover it\u00ae chrome",
+            "title": "Discover it chrome",
+            "original_title": "Discover it chrome",
             "fee": 0,
             "url": "https://www.discover.com/credit-cards/chrome.html",
             "foreign_fee": false,
@@ -15876,12 +15945,12 @@ data = {
             }
         }
     ],
-    "Delta Sigma Pi Visa\u00ae Signature Card": [
+    "Delta Sigma Pi Visa Signature Card": [
         23,
         {
             "_id": "5e690b260b077d5830cadd3e",
-            "title": "Delta Sigma Pi Visa\u00ae Signature Card",
-            "original_title": "Delta Sigma Pi Visa\u00ae Signature Card",
+            "title": "Delta Sigma Pi Visa Signature Card",
+            "original_title": "Delta Sigma Pi Visa Signature Card",
             "fee": 0,
             "url": "https://applications.usbank.com/oad/catalog/learnMore.controller?productId=05&locationCode=9552&sourceCode=72026",
             "foreign_fee": true,
@@ -15910,12 +15979,12 @@ data = {
             }
         }
     ],
-    "Wounded Warrior Project USAA Rewards\u2122 World MasterCard\u00ae": [
+    "Wounded Warrior Project USAA Rewards World MasterCard": [
         23,
         {
             "_id": "5e690b260b077d5830cae55f",
-            "title": "Wounded Warrior Project USAA Rewards\u2122 World MasterCard\u00ae",
-            "original_title": "Wounded Warrior Project USAA Rewards\u2122 World MasterCard\u00ae",
+            "title": "Wounded Warrior Project USAA Rewards World MasterCard",
+            "original_title": "Wounded Warrior Project USAA Rewards World MasterCard",
             "fee": 0,
             "url": "https://www.usaa.com/inet/pages/bank_credit_cards_military_affiliate_WWP",
             "foreign_fee": true,
@@ -16167,12 +16236,12 @@ data = {
             }
         }
     ],
-    "Sony Card from Capital One\u00ae": [
+    "Sony Card from Capital One": [
         23,
         {
             "_id": "5e690b260b077d5830cae29b",
-            "title": "Sony Card from Capital One\u00ae",
-            "original_title": "Sony Card from Capital One\u00ae",
+            "title": "Sony Card from Capital One",
+            "original_title": "Sony Card from Capital One",
             "fee": 0,
             "url": "https://www.sonyrewards.com/en/gateway/complete/?complete=true&versionid=579",
             "foreign_fee": true,
@@ -16274,12 +16343,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Business Bonus Rewards PLUS Card": [
+    "Visa Business Bonus Rewards PLUS Card": [
         126,
         {
             "_id": "5e690b260b077d5830cae4fc",
-            "title": "Visa\u00ae Business Bonus Rewards PLUS Card",
-            "original_title": "Visa\u00ae Business Bonus Rewards PLUS Card",
+            "title": "Visa Business Bonus Rewards PLUS Card",
+            "original_title": "Visa Business Bonus Rewards PLUS Card",
             "fee": 50,
             "url": "https://online1.elancard.com/oad/catalog/learnMore.controller?productId=89",
             "foreign_fee": true,
@@ -16676,12 +16745,12 @@ data = {
             }
         }
     ],
-    "PNC Cash Rewards\u00ae Visa Signature\u00ae Business": [
+    "PNC Cash Rewards Visa Signature Business": [
         24,
         {
             "_id": "5e690b260b077d5830cae16c",
-            "title": "PNC Cash Rewards\u00ae Visa Signature\u00ae Business",
-            "original_title": "PNC Cash Rewards\u00ae Visa Signature\u00ae Business",
+            "title": "PNC Cash Rewards Visa Signature Business",
+            "original_title": "PNC Cash Rewards Visa Signature Business",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -16819,12 +16888,12 @@ data = {
             }
         }
     ],
-    "Visa Signature\u00ae Bonus Rewards": [
+    "Visa Signature Bonus Rewards": [
         108,
         {
             "_id": "5e690b260b077d5830cae4bf",
-            "title": "Visa Signature\u00ae Bonus Rewards",
-            "original_title": "Visa Signature\u00ae Bonus Rewards",
+            "title": "Visa Signature Bonus Rewards",
+            "original_title": "Visa Signature Bonus Rewards",
             "fee": 0,
             "url": "https://online1.elancard.com/oad/catalog/learnMore.controller?productId=05",
             "foreign_fee": true,
@@ -16858,14 +16927,14 @@ data = {
         {
             "_id": "5e690b260b077d5830cadbe7",
             "title": "Capital One VentureOne Rewards Credit Card",
-            "original_title": "Capital One\u00ae VentureOne\u00ae Rewards Credit Card (Visa)",
+            "original_title": "Capital One VentureOne Rewards Credit Card (Visa)",
             "fee": 0,
             "url": "https://www.capitalone.com/credit-cards/ventureone/",
             "foreign_fee": false,
             "rewards_type": 17,
             "rewards": [
                 {
-                    "title": "You\u2019ll get additional warranty protection at no charge on eligible items that are purchased with your credit card."
+                    "title": "Youll get additional warranty protection at no charge on eligible items that are purchased with your credit card."
                 },
                 {
                     "title": "Rent an eligible vehicle with your credit card and you can be covered for damage due to collision or theft."
@@ -16935,12 +17004,12 @@ data = {
             }
         }
     ],
-    "Miles & More\u00ae Premier World MasterCard\u00ae": [
+    "Miles & More Premier World MasterCard": [
         25,
         {
             "_id": "5e690b260b077d5830cadf2a",
-            "title": "Miles & More\u00ae Premier World MasterCard\u00ae",
-            "original_title": "Miles & More\u00ae Premier World MasterCard\u00ae",
+            "title": "Miles & More Premier World MasterCard",
+            "original_title": "Miles & More Premier World MasterCard",
             "nickname": "Miles and More Lufthansa",
             "fee": 79,
             "url": "https://www.juniper.com/app/japply/lp/TnCs.jsp?prodidreq=CCMWC62724",
@@ -17158,7 +17227,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadb33",
             "title": "Blue Cash Everyday Card from American Express",
-            "original_title": "Blue Cash Everyday\u00ae Card from American Express",
+            "original_title": "Blue Cash Everyday Card from American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.americanexpress.com/us/credit-cards/personal-card-application/blue-cash-everyday-credit-card/25330-10-0?intlink=us-CCSG-CardDetail-BCE-Apply-Top",
@@ -17166,7 +17235,7 @@ data = {
             "rewards_type": 1,
             "rewards": [
                 {
-                    "title": "Purchase Protection. Shop with added confidence and Purchase Protection\u2666, which can help protect eligible purchases made with the Card against accidental damage and theft for up to 90 days from the date of purchase. Please read important exclusions and restrictions."
+                    "title": "Purchase Protection. Shop with added confidence and Purchase Protection, which can help protect eligible purchases made with the Card against accidental damage and theft for up to 90 days from the date of purchase. Please read important exclusions and restrictions."
                 },
                 {
                     "title": "Earn $150 back after you spend $1,000 in purchases on your new Card in your first 3 months. You will receive $150 back in the form of a statement credit."
@@ -17335,12 +17404,12 @@ data = {
             }
         }
     ],
-    "American Bar Association Business MasterCard\u00ae": [
+    "American Bar Association Business MasterCard": [
         25,
         {
             "_id": "5e690b260b077d5830cada86",
-            "title": "American Bar Association Business MasterCard\u00ae",
-            "original_title": "American Bar Association Business MasterCard\u00ae",
+            "title": "American Bar Association Business MasterCard",
+            "original_title": "American Bar Association Business MasterCard",
             "fee": 0,
             "url": "https://business.bankofamerica.com/creditcard/CardProductPage?sc=UABPHS&category=200",
             "foreign_fee": true,
@@ -17486,16 +17555,16 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Save 6\u00a2 on every gallon of gas you pump."
+                    "title": "Save 6 on every gallon of gas you pump."
                 },
                 {
-                    "title": "Apply by 12/31/19 and you can get 12\u00a2 off every gallon of Synergy\u2122 fuel for the first 2 months or download the Exxon Mobil Rewards+\u2122 app and get 50\u00a2 off for the first month when you apply."
+                    "title": "Apply by 12/31/19 and you can get 12 off every gallon of Synergy fuel for the first 2 months or download the Exxon Mobil Rewards+ app and get 50 off for the first month when you apply."
                 }
             ],
             "earnings": [
                 {
                     "points": 6,
-                    "description": "Save 6\u00a2 on every gallon of gas you pump.",
+                    "description": "Save 6 on every gallon of gas you pump.",
                     "category": 8
                 }
             ],
@@ -17517,12 +17586,12 @@ data = {
             }
         }
     ],
-    "BankAmericard Cash Rewards\u2122 Credit Card for Students": [
+    "BankAmericard Cash Rewards Credit Card for Students": [
         26,
         {
             "_id": "5e690b260b077d5830cadaf5",
-            "title": "BankAmericard Cash Rewards\u2122 Credit Card for Students",
-            "original_title": "BankAmericard Cash Rewards\u2122 Credit Card for Students",
+            "title": "BankAmericard Cash Rewards Credit Card for Students",
+            "original_title": "BankAmericard Cash Rewards Credit Card for Students",
             "fee": 0,
             "url": "https://www.bankofamerica.com/credit-cards/products/student-cash-back-credit-card.go",
             "foreign_fee": true,
@@ -17727,12 +17796,12 @@ data = {
             }
         }
     ],
-    "The Frontier Airlines World MasterCard\u00ae": [
+    "The Frontier Airlines World MasterCard": [
         26,
         {
             "_id": "5e690b260b077d5830cae327",
-            "title": "The Frontier Airlines World MasterCard\u00ae",
-            "original_title": "The Frontier Airlines World MasterCard\u00ae",
+            "title": "The Frontier Airlines World MasterCard",
+            "original_title": "The Frontier Airlines World MasterCard",
             "fee": 69,
             "url": "https://www.flyfrontier.com/ways-to-save/mastercard/",
             "foreign_fee": true,
@@ -17751,7 +17820,7 @@ data = {
                     "title": "Earn 2 miles per $1 on FlyFrontier.com purchases"
                 },
                 {
-                    "title": "Complimentary FICO\u00ae Credit Score"
+                    "title": "Complimentary FICO Credit Score"
                 },
                 {
                     "title": "1 mile per $1 on all other purchases"
@@ -17996,12 +18065,12 @@ data = {
             }
         }
     ],
-    "U22 Visa\u00ae": [
+    "U22 Visa": [
         26,
         {
             "_id": "5e690b260b077d5830cae36d",
-            "title": "U22 Visa\u00ae",
-            "original_title": "U22 Visa\u00ae",
+            "title": "U22 Visa",
+            "original_title": "U22 Visa",
             "fee": 0,
             "url": "https://www.gtefinancial.org/personal/credit-cards/get-more-with-your-credit-card/u22-visa-credit-card",
             "foreign_fee": true,
@@ -18150,7 +18219,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cada95",
             "title": "American Express Cash Magnet Card",
-            "original_title": "American Express Cash Magnet\u00ae Card",
+            "original_title": "American Express Cash Magnet Card",
             "nickname": "AMEX, AMEX",
             "fee": 0,
             "url": "https://www.americanexpress.com/us/credit-cards/card/cash-magnet/",
@@ -18760,12 +18829,12 @@ data = {
             }
         }
     ],
-    "Citi Forward\u00ae Card for College Students": [
+    "Citi Forward Card for College Students": [
         28,
         {
             "_id": "5e690b260b077d5830cadc56",
-            "title": "Citi Forward\u00ae Card for College Students",
-            "original_title": "Citi Forward\u00ae Card for College Students",
+            "title": "Citi Forward Card for College Students",
+            "original_title": "Citi Forward Card for College Students",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -18901,12 +18970,12 @@ data = {
             }
         }
     ],
-    "Westgate Rewards MasterCard\u00ae": [
+    "Westgate Rewards MasterCard": [
         28,
         {
             "_id": "5e690b260b077d5830cae54a",
-            "title": "Westgate Rewards MasterCard\u00ae",
-            "original_title": "Westgate Rewards MasterCard\u00ae",
+            "title": "Westgate Rewards MasterCard",
+            "original_title": "Westgate Rewards MasterCard",
             "fee": 0,
             "url": "http://westgateresorts.com/rewards-card/",
             "foreign_fee": true,
@@ -19130,19 +19199,19 @@ data = {
             }
         }
     ],
-    "MERRILL+\u00ae Visa Signature": [
+    "MERRILL+ Visa Signature": [
         29,
         {
             "_id": "5e690b260b077d5830cadf22",
-            "title": "MERRILL+\u00ae Visa Signature",
-            "original_title": "MERRILL+\u00ae Visa Signature",
+            "title": "MERRILL+ Visa Signature",
+            "original_title": "MERRILL+ Visa Signature",
             "fee": 295,
             "url": "https://www.rewards.ml.com/RWDapp/ns/home?mc=ml",
             "foreign_fee": false,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 1 Merrill Point\u00ae for every dollar you spend on purchases \u2013 there's no limit to the number of points you can earn and points don't expire."
+                    "title": "Earn 1 Merrill Point for every dollar you spend on purchases  there's no limit to the number of points you can earn and points don't expire."
                 }
             ],
             "earnings": [],
@@ -19248,7 +19317,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 2.5 Merrill Points\u00ae for every dollar you spend on purchases with your Card. Redeem your earned Points for travel, unique experiences, gift cards and more."
+                    "title": "Earn 2.5 Merrill Points for every dollar you spend on purchases with your Card. Redeem your earned Points for travel, unique experiences, gift cards and more."
                 }
             ],
             "earnings": [],
@@ -19375,12 +19444,12 @@ data = {
             }
         }
     ],
-    "Financial Rewards\u00ae Platinum Plus\u00ae Card": [
+    "Financial Rewards Platinum Plus Card": [
         29,
         {
             "_id": "5e690b260b077d5830caddac",
-            "title": "Financial Rewards\u00ae Platinum Plus\u00ae Card",
-            "original_title": "Financial Rewards\u00ae Platinum Plus\u00ae Card",
+            "title": "Financial Rewards Platinum Plus Card",
+            "original_title": "Financial Rewards Platinum Plus Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -19421,7 +19490,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 3% in Subaru Reward Dollars \u2013 up to 500 Subaru Reward Dollars per year."
+                    "title": "Earn 3% in Subaru Reward Dollars  up to 500 Subaru Reward Dollars per year."
                 }
             ],
             "earnings": [],
@@ -19691,12 +19760,12 @@ data = {
             }
         }
     ],
-    "Capital One\u00ae Classic Platinum Credit Card": [
+    "Capital One Classic Platinum Credit Card": [
         30,
         {
             "_id": "5e690b260b077d5830cadbd5",
-            "title": "Capital One\u00ae Classic Platinum Credit Card",
-            "original_title": "Capital One\u00ae Classic Platinum Credit Card",
+            "title": "Capital One Classic Platinum Credit Card",
+            "original_title": "Capital One Classic Platinum Credit Card",
             "fee": 39,
             "url": "http://www.capitalone.com/credit-cards/classic-platinum/",
             "foreign_fee": true,
@@ -19826,12 +19895,12 @@ data = {
             }
         }
     ],
-    "Total Merrill\u00ae Cash Back Visa Signature": [
+    "Total Merrill Cash Back Visa Signature": [
         30,
         {
             "_id": "5e690b260b077d5830cae347",
-            "title": "Total Merrill\u00ae Cash Back Visa Signature",
-            "original_title": "Total Merrill\u00ae Cash Back Visa Signature",
+            "title": "Total Merrill Cash Back Visa Signature",
+            "original_title": "Total Merrill Cash Back Visa Signature",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -19962,12 +20031,12 @@ data = {
             }
         }
     ],
-    "ScotiaGold Passport\u00ae VISA": [
+    "ScotiaGold Passport VISA": [
         31,
         {
             "_id": "5e690b260b077d5830cae20d",
-            "title": "ScotiaGold Passport\u00ae VISA",
-            "original_title": "ScotiaGold Passport\u00ae VISA",
+            "title": "ScotiaGold Passport VISA",
+            "original_title": "ScotiaGold Passport VISA",
             "nickname": "AMEX",
             "fee": 0,
             "url": "",
@@ -20247,12 +20316,12 @@ data = {
             }
         }
     ],
-    "TCF Bank Visa\u00ae Business Bonus Rewards": [
+    "TCF Bank Visa Business Bonus Rewards": [
         32,
         {
             "_id": "5e690b260b077d5830cae306",
-            "title": "TCF Bank Visa\u00ae Business Bonus Rewards",
-            "original_title": "TCF Bank Visa\u00ae Business Bonus Rewards",
+            "title": "TCF Bank Visa Business Bonus Rewards",
+            "original_title": "TCF Bank Visa Business Bonus Rewards",
             "fee": 0,
             "url": "https://online1.elancard.com/oad/catalog/landing.controller?locationCode=14694",
             "foreign_fee": true,
@@ -20459,12 +20528,12 @@ data = {
             }
         }
     ],
-    "TRIO\u00ae Cash Back Credit Card": [
+    "TRIO Cash Back Credit Card": [
         32,
         {
             "_id": "5e690b260b077d5830cae35a",
-            "title": "TRIO\u00ae Cash Back Credit Card",
-            "original_title": "TRIO\u00ae Cash Back Credit Card",
+            "title": "TRIO Cash Back Credit Card",
+            "original_title": "TRIO Cash Back Credit Card",
             "fee": 0,
             "url": "https://www.53.com/content/fifth-third/en/personal-banking/bank/credit-cards/trio.html",
             "foreign_fee": false,
@@ -20710,12 +20779,12 @@ data = {
             }
         }
     ],
-    "Delta Delta Delta Visa\u00ae Signature Card": [
+    "Delta Delta Delta Visa Signature Card": [
         32,
         {
             "_id": "5e690b260b077d5830cadd3c",
-            "title": "Delta Delta Delta Visa\u00ae Signature Card",
-            "original_title": "Delta Delta Delta Visa\u00ae Signature Card",
+            "title": "Delta Delta Delta Visa Signature Card",
+            "original_title": "Delta Delta Delta Visa Signature Card",
             "fee": 0,
             "url": "https://applications.usbank.com/oad/catalog/learnMore.controller?productId=05&locationCode=9552&sourceCode=72026",
             "foreign_fee": true,
@@ -21181,12 +21250,12 @@ data = {
             }
         }
     ],
-    "Green Dot primor\u00ae Visa\u00ae Gold Secured Credit Card": [
+    "Green Dot primor Visa Gold Secured Credit Card": [
         33,
         {
             "_id": "5e690b260b077d5830cade48",
-            "title": "Green Dot primor\u00ae Visa\u00ae Gold Secured Credit Card",
-            "original_title": "Green Dot primor\u00ae Visa\u00ae Gold Secured Credit Card",
+            "title": "Green Dot primor Visa Gold Secured Credit Card",
+            "original_title": "Green Dot primor Visa Gold Secured Credit Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -21267,12 +21336,12 @@ data = {
             }
         }
     ],
-    "Discover\u00ae Open Road Card": [
+    "Discover Open Road Card": [
         34,
         {
             "_id": "5e690b260b077d5830cadd70",
-            "title": "Discover\u00ae Open Road Card",
-            "original_title": "Discover\u00ae Open Road Card",
+            "title": "Discover Open Road Card",
+            "original_title": "Discover Open Road Card",
             "fee": 0,
             "url": "",
             "foreign_fee": false,
@@ -21353,10 +21422,10 @@ data = {
                     "title": "Spend in over 150 currencies at the interbank exchange rate"
                 },
                 {
-                    "title": "No fee ATM withdrawals up to \u00a3200 per month"
+                    "title": "No fee ATM withdrawals up to 200 per month"
                 },
                 {
-                    "title": "Exchange in 30 fiat currencies up to \u00a35,000 per month without any hidden fees"
+                    "title": "Exchange in 30 fiat currencies up to 5,000 per month without any hidden fees"
                 },
                 {
                     "title": "Earn up to 1% cashback in any currency, including cryptocurrencies (earn 0.1% in Europe and 1.0% outside of Europe on your card payments in any of our supported currencies, including Bitcoin, Litecoin, and Ether)"
@@ -21526,12 +21595,12 @@ data = {
             }
         }
     ],
-    "The Travelocity\u00ae Rewards American Express\u00ae Card": [
+    "The Travelocity Rewards American Express Card": [
         34,
         {
             "_id": "5e690b260b077d5830cae339",
-            "title": "The Travelocity\u00ae Rewards American Express\u00ae Card",
-            "original_title": "The Travelocity\u00ae Rewards American Express\u00ae Card",
+            "title": "The Travelocity Rewards American Express Card",
+            "original_title": "The Travelocity Rewards American Express Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.barclaycardus.com/apply/Landing.action?campaignId=1371&cellNumber=13",
@@ -21564,12 +21633,12 @@ data = {
             }
         }
     ],
-    "Susan G. Komen\u00ae Credit Card": [
+    "Susan G. Komen Credit Card": [
         34,
         {
             "_id": "5e690b260b077d5830cae2fa",
-            "title": "Susan G. Komen\u00ae Credit Card",
-            "original_title": "Susan G. Komen\u00ae Credit Card",
+            "title": "Susan G. Komen Credit Card",
+            "original_title": "Susan G. Komen Credit Card",
             "fee": 0,
             "url": "https://www.bankofamerica.com/credit-cards/products/susan-komen-credit-card.go",
             "foreign_fee": true,
@@ -21635,19 +21704,19 @@ data = {
             }
         }
     ],
-    "Chase Freedom\u00ae Student": [
+    "Chase Freedom Student": [
         34,
         {
             "_id": "5e690b260b077d5830cadc23",
-            "title": "Chase Freedom\u00ae Student",
-            "original_title": "Chase Freedom\u00ae Student",
+            "title": "Chase Freedom Student",
+            "original_title": "Chase Freedom Student",
             "fee": 0,
             "url": "https://creditcards.chase.com/cash-back-credit-cards/freedom/student",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "You won't have to pay an annual fee for all the great features that come with your Freedom\u00ae Student card."
+                    "title": "You won't have to pay an annual fee for all the great features that come with your Freedom Student card."
                 },
                 {
                     "title": "Earn cash back while building credit for your future."
@@ -21719,12 +21788,12 @@ data = {
             }
         }
     ],
-    "American Express\u00ae Gold Card for Ameriprise Financial": [
+    "American Express Gold Card for Ameriprise Financial": [
         35,
         {
             "_id": "5e690b260b077d5830cadaa6",
-            "title": "American Express\u00ae Gold Card for Ameriprise Financial",
-            "original_title": "American Express\u00ae Gold Card for Ameriprise Financial",
+            "title": "American Express Gold Card for Ameriprise Financial",
+            "original_title": "American Express Gold Card for Ameriprise Financial",
             "nickname": "AMEX",
             "fee": 125,
             "url": "https://www.ameriprise.com/cash-cards-and-lending/cards/american-express-gold-card.asp",
@@ -21889,12 +21958,12 @@ data = {
             }
         }
     ],
-    "The Priceline Rewards\u2122 Visa\u00ae Card (Legacy)": [
+    "The Priceline Rewards Visa Card (Legacy)": [
         35,
         {
             "_id": "5e690b260b077d5830cae335",
-            "title": "The Priceline Rewards\u2122 Visa\u00ae Card (Legacy)",
-            "original_title": "The Priceline Rewards\u2122 Visa\u00ae Card (Legacy)",
+            "title": "The Priceline Rewards Visa Card (Legacy)",
+            "original_title": "The Priceline Rewards Visa Card (Legacy)",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -21904,7 +21973,7 @@ data = {
                     "title": "Get 10% of your points back to use toward your next redemption every time you redeem for statement credits towards eligible priceline.com and travel purchases."
                 },
                 {
-                    "title": "Earn 5 points for every $1 you spend on Name Your Own Price\u00ae purchases."
+                    "title": "Earn 5 points for every $1 you spend on Name Your Own Price purchases."
                 },
                 {
                     "title": "Earn 2 points per dollar spent on all other purchases."
@@ -22305,12 +22374,12 @@ data = {
             }
         }
     ],
-    "The Priceline Rewards\u2122 Visa\u00ae Card (Legacy Version)": [
+    "The Priceline Rewards Visa Card (Legacy Version)": [
         36,
         {
             "_id": "5e690b260b077d5830cae334",
-            "title": "The Priceline Rewards\u2122 Visa\u00ae Card (Legacy Version)",
-            "original_title": "The Priceline Rewards\u2122 Visa\u00ae Card (Legacy Version)",
+            "title": "The Priceline Rewards Visa Card (Legacy Version)",
+            "original_title": "The Priceline Rewards Visa Card (Legacy Version)",
             "fee": 0,
             "url": "https://www.pricelinevisa.com/apply/Landing.action?campaignId=1821&cellNumber=15&prodidreq=CCVVS53573&referrerid=0000000000",
             "foreign_fee": true,
@@ -22348,12 +22417,12 @@ data = {
             }
         }
     ],
-    "FirstRewards World MasterCard\u00ae": [
+    "FirstRewards World MasterCard": [
         36,
         {
             "_id": "5e690b260b077d5830caddc1",
-            "title": "FirstRewards World MasterCard\u00ae",
-            "original_title": "FirstRewards World MasterCard\u00ae",
+            "title": "FirstRewards World MasterCard",
+            "original_title": "FirstRewards World MasterCard",
             "fee": 0,
             "url": "https://www.firstinterstatebank.com/personal/banking/credit_cards/firstrewards_card.php",
             "foreign_fee": true,
@@ -22428,10 +22497,10 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "On non-fuel purchases at their stations, it\u2019s a 3% rebate."
+                    "title": "On non-fuel purchases at their stations, its a 3% rebate."
                 },
                 {
-                    "title": "On fuel purchases at Chevron/Texaco stations, it\u2019s 10 cents per gallon."
+                    "title": "On fuel purchases at Chevron/Texaco stations, its 10 cents per gallon."
                 },
                 {
                     "title": "Earn 1% rebate on all purchases."
@@ -22558,12 +22627,12 @@ data = {
             }
         }
     ],
-    "Discover it\u00ae": [
+    "Discover it": [
         36,
         {
             "_id": "5e690b260b077d5830cadd65",
-            "title": "Discover it\u00ae",
-            "original_title": "Discover it\u00ae",
+            "title": "Discover it",
+            "original_title": "Discover it",
             "fee": 0,
             "url": "https://www.discover.com/credit-cards/cash-back/it-card.html",
             "foreign_fee": false,
@@ -22652,12 +22721,12 @@ data = {
             }
         }
     ],
-    "Sallie Mae Upromise World MasterCard\u00ae": [
+    "Sallie Mae Upromise World MasterCard": [
         36,
         {
             "_id": "5e690b260b077d5830cae1f3",
-            "title": "Sallie Mae Upromise World MasterCard\u00ae",
-            "original_title": "Sallie Mae Upromise World MasterCard\u00ae",
+            "title": "Sallie Mae Upromise World MasterCard",
+            "original_title": "Sallie Mae Upromise World MasterCard",
             "fee": 0,
             "url": "https://www.salliemae.com/credit-cards/upromise-card/",
             "foreign_fee": true,
@@ -22670,7 +22739,7 @@ data = {
                     "title": "Earn a $50 Cash Back Bonus"
                 },
                 {
-                    "title": "Complimentary FICO\u00ae Credit Score"
+                    "title": "Complimentary FICO Credit Score"
                 },
                 {
                     "title": "5% Cash Back on online shopping, travel, and restaurants"
@@ -22964,12 +23033,12 @@ data = {
             }
         }
     ],
-    "Discover it\u00ae Miles": [
+    "Discover it Miles": [
         37,
         {
             "_id": "5e690b260b077d5830cadd6a",
-            "title": "Discover it\u00ae Miles",
-            "original_title": "Discover it\u00ae Miles",
+            "title": "Discover it Miles",
+            "original_title": "Discover it Miles",
             "fee": 0,
             "url": "https://www.discover.com/credit-cards/miles/index.html",
             "foreign_fee": false,
@@ -22979,10 +23048,10 @@ data = {
                     "title": "Your Miles card earns an unlimited 1.5x Miles on every dollar you spend on purchases."
                 },
                 {
-                    "title": "Your Discover it\u00ae Miles card will reimburse up to $30 of your in-flight Wi-Fi purchases each year with automatic credits to your statement."
+                    "title": "Your Discover it Miles card will reimburse up to $30 of your in-flight Wi-Fi purchases each year with automatic credits to your statement."
                 },
                 {
-                    "title": "We match all the Miles you've earned at the end of your first year\u2014so 20,000 Miles turns into 40,000 Miles\u2014 Automatically. Only for new cardmembers."
+                    "title": "We match all the Miles you've earned at the end of your first yearso 20,000 Miles turns into 40,000 Miles Automatically. Only for new cardmembers."
                 },
                 {
                     "title": "Redeem Miles in any amount for a travel credit to your statement that covers travel purchases. Or get cash at any time. 100 Miles always equals $1.00."
@@ -23497,7 +23566,7 @@ data = {
                     "title": "Add authorized users for $65 each"
                 },
                 {
-                    "title": "3X Points on new travel purchases \u2013 including airline, hotels, and car rentals"
+                    "title": "3X Points on new travel purchases  including airline, hotels, and car rentals"
                 },
                 {
                     "title": "2X Points on new dining purchases"
@@ -23512,17 +23581,17 @@ data = {
             "earnings": [
                 {
                     "points": 3,
-                    "description": "3X Points on new travel purchases \u2013 including airline, hotels, and car rentals",
+                    "description": "3X Points on new travel purchases  including airline, hotels, and car rentals",
                     "category": 1
                 },
                 {
                     "points": 3,
-                    "description": "3X Points on new travel purchases \u2013 including airline, hotels, and car rentals",
+                    "description": "3X Points on new travel purchases  including airline, hotels, and car rentals",
                     "category": 3
                 },
                 {
                     "points": 3,
-                    "description": "3X Points on new travel purchases \u2013 including airline, hotels, and car rentals",
+                    "description": "3X Points on new travel purchases  including airline, hotels, and car rentals",
                     "category": 10
                 },
                 {
@@ -23662,12 +23731,12 @@ data = {
             }
         }
     ],
-    "ASME BankAmericard Cash Rewards\u2122 Visa": [
+    "ASME BankAmericard Cash Rewards Visa": [
         38,
         {
             "_id": "5e690b260b077d5830cadacb",
-            "title": "ASME BankAmericard Cash Rewards\u2122 Visa",
-            "original_title": "ASME BankAmericard Cash Rewards\u2122 Visa",
+            "title": "ASME BankAmericard Cash Rewards Visa",
+            "original_title": "ASME BankAmericard Cash Rewards Visa",
             "fee": 0,
             "url": "https://www.asme.org/about-asme/professional-membership/bank-of-america-credit-card",
             "foreign_fee": true,
@@ -23787,12 +23856,12 @@ data = {
             }
         }
     ],
-    "TD Aeroplan\u2122 Visa\u00ae Credit Card": [
+    "TD Aeroplan Visa Credit Card": [
         38,
         {
             "_id": "5e690b260b077d5830cae309",
-            "title": "TD Aeroplan\u2122 Visa\u00ae Credit Card",
-            "original_title": "TD Aeroplan\u2122 Visa\u00ae Credit Card",
+            "title": "TD Aeroplan Visa Credit Card",
+            "original_title": "TD Aeroplan Visa Credit Card",
             "fee": 95,
             "url": "http://www.tdbank.com/personalcreditcard/aeroplan.html",
             "foreign_fee": true,
@@ -23856,7 +23925,7 @@ data = {
                     "title": "Reimbursement for expenses incurred for stolen or damaged phones, if recurring phone bill payments are made with an eligible Mastercard."
                 },
                 {
-                    "title": "Get real-time noti\ufb01cations in your Quicken mobile app when you use your credit card, including pending transactions, so your spending, budgets, and custom alerts are always up to date."
+                    "title": "Get real-time notications in your Quicken mobile app when you use your credit card, including pending transactions, so your spending, budgets, and custom alerts are always up to date."
                 },
                 {
                     "title": "Earn 2x points on recurring bills, groceries, dining and more with no limits."
@@ -24057,12 +24126,12 @@ data = {
             }
         }
     ],
-    "USA Triathlon Visa\u00ae Rewards": [
+    "USA Triathlon Visa Rewards": [
         39,
         {
             "_id": "5e690b260b077d5830cae3bf",
-            "title": "USA Triathlon Visa\u00ae Rewards",
-            "original_title": "USA Triathlon Visa\u00ae Rewards",
+            "title": "USA Triathlon Visa Rewards",
+            "original_title": "USA Triathlon Visa Rewards",
             "fee": 0,
             "url": "http://www.commercebank.com/affinity-agent-cards/USA-Triathlon/",
             "foreign_fee": true,
@@ -24270,22 +24339,22 @@ data = {
             }
         }
     ],
-    "The Carnival\u2122 MasterCard\u00ae": [
+    "The Carnival MasterCard": [
         39,
         {
             "_id": "5e690b260b077d5830cae324",
-            "title": "The Carnival\u2122 MasterCard\u00ae",
-            "original_title": "The Carnival\u2122 MasterCard\u00ae",
+            "title": "The Carnival MasterCard",
+            "original_title": "The Carnival MasterCard",
             "fee": 0,
             "url": "https://www.barclaycardus.com/apply/Landing.action?campaignId=2042&cellNumber=1",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn double FunPoints\u00ae on any Carnival\u2122 purchase."
+                    "title": "Earn double FunPoints on any Carnival purchase."
                 },
                 {
-                    "title": "Earn 1 FunPoint\u00ae per $1 spent everywhere else."
+                    "title": "Earn 1 FunPoint per $1 spent everywhere else."
                 }
             ],
             "earnings": [],
@@ -24319,7 +24388,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "3% cash back for every $1 spent on Mary Kay\u00ae purchases"
+                    "title": "3% cash back for every $1 spent on Mary Kay purchases"
                 },
                 {
                     "title": "1% cash back for every $1 spent on all other eligible purchases"
@@ -24414,19 +24483,19 @@ data = {
             }
         }
     ],
-    "Dodge\u00ae MasterCard\u00ae": [
+    "Dodge MasterCard": [
         40,
         {
             "_id": "5e690b260b077d5830cadd76",
-            "title": "Dodge\u00ae MasterCard\u00ae",
-            "original_title": "Dodge\u00ae MasterCard\u00ae",
+            "title": "Dodge MasterCard",
+            "original_title": "Dodge MasterCard",
             "fee": 0,
             "url": "http://www.chryslercards.com/dodge",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "3 points per $1 spent on qualifying purchases made at Chrysler Group Dealerships \u2013 includes parts, repairs, maintenance and accessories."
+                    "title": "3 points per $1 spent on qualifying purchases made at Chrysler Group Dealerships  includes parts, repairs, maintenance and accessories."
                 },
                 {
                     "title": "2 points per $1 spent on qualifying travel purchases."
@@ -24522,12 +24591,12 @@ data = {
             }
         }
     ],
-    "PenFed Defender American Express\u00ae Card": [
+    "PenFed Defender American Express Card": [
         40,
         {
             "_id": "5e690b260b077d5830cadfb9",
-            "title": "PenFed Defender American Express\u00ae Card",
-            "original_title": "PenFed Defender American Express\u00ae Card",
+            "title": "PenFed Defender American Express Card",
+            "original_title": "PenFed Defender American Express Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.penfed.org/Defender-Cash-Rewards/",
@@ -24557,12 +24626,12 @@ data = {
             }
         }
     ],
-    "USAA Rate Advantage MasterCard\u00ae": [
+    "USAA Rate Advantage MasterCard": [
         40,
         {
             "_id": "5e690b260b077d5830cae3ca",
-            "title": "USAA Rate Advantage MasterCard\u00ae",
-            "original_title": "USAA Rate Advantage MasterCard\u00ae",
+            "title": "USAA Rate Advantage MasterCard",
+            "original_title": "USAA Rate Advantage MasterCard",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -24668,12 +24737,12 @@ data = {
             }
         }
     ],
-    "Rutgers University Select Rewards Visa\u00ae Platinum Card": [
+    "Rutgers University Select Rewards Visa Platinum Card": [
         40,
         {
             "_id": "5e690b260b077d5830cae1ee",
-            "title": "Rutgers University Select Rewards Visa\u00ae Platinum Card",
-            "original_title": "Rutgers University Select Rewards Visa\u00ae Platinum Card",
+            "title": "Rutgers University Select Rewards Visa Platinum Card",
+            "original_title": "Rutgers University Select Rewards Visa Platinum Card",
             "fee": 29,
             "url": "https://applications.usbank.com/oad/apply/begin?productId=50",
             "foreign_fee": true,
@@ -24702,12 +24771,12 @@ data = {
             }
         }
     ],
-    "Fidelity\u00ae Retirement Rewards American Express": [
+    "Fidelity Retirement Rewards American Express": [
         40,
         {
             "_id": "5e690b260b077d5830caddab",
-            "title": "Fidelity\u00ae Retirement Rewards American Express",
-            "original_title": "Fidelity\u00ae Retirement Rewards American Express",
+            "title": "Fidelity Retirement Rewards American Express",
+            "original_title": "Fidelity Retirement Rewards American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.applyonlinenow.com/USCCapp/Ctl/entry?sc=VABNWY#b",
@@ -25018,12 +25087,12 @@ data = {
             }
         }
     ],
-    "The Platinum Card\u00ae from American Express for Ameriprise Financial": [
+    "The Platinum Card from American Express for Ameriprise Financial": [
         41,
         {
             "_id": "5e690b260b077d5830cae32f",
-            "title": "The Platinum Card\u00ae from American Express for Ameriprise Financial",
-            "original_title": "The Platinum Card\u00ae from American Express for Ameriprise Financial",
+            "title": "The Platinum Card from American Express for Ameriprise Financial",
+            "original_title": "The Platinum Card from American Express for Ameriprise Financial",
             "nickname": "AMEX",
             "fee": 450,
             "url": "https://www.ameriprise.com/cash-cards-and-lending/cards/platinum-card-from-american-express.asp",
@@ -25031,10 +25100,10 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 2 Membership Rewards\u00ae points for each dollar of eligible purchases made when you book on the American Express Travel website."
+                    "title": "Earn 2 Membership Rewards points for each dollar of eligible purchases made when you book on the American Express Travel website."
                 },
                 {
-                    "title": "Earn 1 Membership Rewards\u00ae point for each dollar you spend on eligible purchases."
+                    "title": "Earn 1 Membership Rewards point for each dollar you spend on eligible purchases."
                 }
             ],
             "earnings": [],
@@ -25269,12 +25338,12 @@ data = {
             }
         }
     ],
-    "U.S. Bank Visa\u00ae Platinum Card": [
+    "U.S. Bank Visa Platinum Card": [
         41,
         {
             "_id": "5e690b260b077d5830cae36a",
-            "title": "U.S. Bank Visa\u00ae Platinum Card",
-            "original_title": "U.S. Bank Visa\u00ae Platinum Card",
+            "title": "U.S. Bank Visa Platinum Card",
+            "original_title": "U.S. Bank Visa Platinum Card",
             "fee": 0,
             "url": "https://www.usbank.com/credit-cards/platinum.html",
             "foreign_fee": true,
@@ -25646,12 +25715,12 @@ data = {
             }
         }
     ],
-    "Detroit Red Wings Travel Rewards American Express\u00ae Card": [
+    "Detroit Red Wings Travel Rewards American Express Card": [
         42,
         {
             "_id": "5e690b260b077d5830cadd4d",
-            "title": "Detroit Red Wings Travel Rewards American Express\u00ae Card",
-            "original_title": "Detroit Red Wings Travel Rewards American Express\u00ae Card",
+            "title": "Detroit Red Wings Travel Rewards American Express Card",
+            "original_title": "Detroit Red Wings Travel Rewards American Express Card",
             "nickname": "AMEX",
             "fee": 95,
             "url": "https://www.flagstar.com/personal/borrowing/detroit-red-wings-credit-cards.html",
@@ -25798,12 +25867,12 @@ data = {
             }
         }
     ],
-    "Ameriprise MasterCard\u00ae": [
+    "Ameriprise MasterCard": [
         42,
         {
             "_id": "5e690b260b077d5830cadab0",
-            "title": "Ameriprise MasterCard\u00ae",
-            "original_title": "Ameriprise MasterCard\u00ae",
+            "title": "Ameriprise MasterCard",
+            "original_title": "Ameriprise MasterCard",
             "fee": 0,
             "url": "https://www.ameriprise.com/cash-cards-and-lending/cards/ameriprise-mastercard.asp",
             "foreign_fee": true,
@@ -25904,7 +25973,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadc50",
             "title": "Citi / AAdvantage Executive World Elite Mastercard",
-            "original_title": "Citi Executive\u00ae / AAdvantage\u00ae World Elite\u2122 MasterCard\u00ae",
+            "original_title": "Citi Executive / AAdvantage World Elite MasterCard",
             "fee": 450,
             "url": "https://secure.fly.aa.com/citi/direct-exec",
             "foreign_fee": false,
@@ -25917,22 +25986,22 @@ data = {
                     "title": "No foreign transaction fees on purchases."
                 },
                 {
-                    "title": "Global Entry or TSA Pre\u2713\u00ae application fee credit up to $100 every 5 years."
+                    "title": "Global Entry or TSA Pre application fee credit up to $100 every 5 years."
                 },
                 {
-                    "title": "Fly to select destinations on American Airlines operated flights for up to 7,500 fewer AAdvantage\u00ae miles with Reduced Mileage Awards."
+                    "title": "Fly to select destinations on American Airlines operated flights for up to 7,500 fewer AAdvantage miles with Reduced Mileage Awards."
                 },
                 {
                     "title": "First checked bag free on domestic American Airlines itineraries for you and up to eight travel companions."
                 },
                 {
-                    "title": "Earn 2 AAdvantage\u00ae miles for every $1 you spend on eligible American Airlines purchases"
+                    "title": "Earn 2 AAdvantage miles for every $1 you spend on eligible American Airlines purchases"
                 },
                 {
-                    "title": "Earn 10,000 AAdvantage\u00ae Elite Qualifying Miles every year (January through December billing statement) after you spend $40,000 in purchases"
+                    "title": "Earn 10,000 AAdvantage Elite Qualifying Miles every year (January through December billing statement) after you spend $40,000 in purchases"
                 },
                 {
-                    "title": "Earn 1 AAdvantage\u00ae mile for every $1 you spend on other purchases."
+                    "title": "Earn 1 AAdvantage mile for every $1 you spend on other purchases."
                 },
                 {
                     "title": "Dedicated concierge service. From finding the perfect gift to making reservations and more, the 24/7 concierge team is ready to go above and beyond to assist you worldwide."
@@ -25944,12 +26013,12 @@ data = {
             "earnings": [
                 {
                     "points": 2,
-                    "description": "Earn 2 AAdvantage\u00ae miles for every $1 you spend on eligible American Airlines and US Airways purchases",
+                    "description": "Earn 2 AAdvantage miles for every $1 you spend on eligible American Airlines and US Airways purchases",
                     "category": 1
                 },
                 {
                     "points": 1,
-                    "description": "Earn 1 AAdvantage\u00ae mile for every $1 you spend on other purchases.",
+                    "description": "Earn 1 AAdvantage mile for every $1 you spend on other purchases.",
                     "category": 7
                 }
             ],
@@ -25971,12 +26040,12 @@ data = {
             }
         }
     ],
-    "Wells Fargo Cash Back College Visa\u00ae": [
+    "Wells Fargo Cash Back College Visa": [
         43,
         {
             "_id": "5e690b260b077d5830cae53c",
-            "title": "Wells Fargo Cash Back College Visa\u00ae",
-            "original_title": "Wells Fargo Cash Back College Visa\u00ae",
+            "title": "Wells Fargo Cash Back College Visa",
+            "original_title": "Wells Fargo Cash Back College Visa",
             "fee": 0,
             "url": "https://www.wellsfargo.com/credit-cards/cash-back-college-card/",
             "foreign_fee": true,
@@ -26103,12 +26172,12 @@ data = {
             }
         }
     ],
-    "Barclaycard CashForward\u2122 World Mastercard": [
+    "Barclaycard CashForward World Mastercard": [
         43,
         {
             "_id": "5e690b260b077d5830cadb09",
-            "title": "Barclaycard CashForward\u2122 World Mastercard",
-            "original_title": "Barclaycard CashForward\u2122 World Mastercard",
+            "title": "Barclaycard CashForward World Mastercard",
+            "original_title": "Barclaycard CashForward World Mastercard",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -26183,12 +26252,12 @@ data = {
             }
         }
     ],
-    "The Priceline Rewards\u2122 Visa\u00ae Card": [
+    "The Priceline Rewards Visa Card": [
         43,
         {
             "_id": "5e690b260b077d5830cae332",
-            "title": "The Priceline Rewards\u2122 Visa\u00ae Card",
-            "original_title": "The Priceline Rewards\u2122 Visa\u00ae Card",
+            "title": "The Priceline Rewards Visa Card",
+            "original_title": "The Priceline Rewards Visa Card",
             "fee": 0,
             "url": "https://www.pricelinevisa.com",
             "foreign_fee": true,
@@ -26198,7 +26267,7 @@ data = {
                     "title": "Get 10% of your points back to use toward your next redemption every time you redeem for statement credits towards eligible priceline.com and travel purchases."
                 },
                 {
-                    "title": "Earn 5 points for every $1 you spend on Name Your Own Price\u00ae purchases."
+                    "title": "Earn 5 points for every $1 you spend on Name Your Own Price purchases."
                 },
                 {
                     "title": "Earn 1 point per $1 spent on all other purchases. Redeem points to pay for anything you buy with your card (min $25 purchase required)."
@@ -26223,12 +26292,12 @@ data = {
             }
         }
     ],
-    "Visa Signature\u00ae Bonus Rewards Plus Card": [
+    "Visa Signature Bonus Rewards Plus Card": [
         123,
         {
             "_id": "5e690b260b077d5830cae4d8",
-            "title": "Visa Signature\u00ae Bonus Rewards Plus Card",
-            "original_title": "Visa Signature\u00ae Bonus Rewards Plus Card",
+            "title": "Visa Signature Bonus Rewards Plus Card",
+            "original_title": "Visa Signature Bonus Rewards Plus Card",
             "fee": 50,
             "url": "",
             "foreign_fee": true,
@@ -26432,12 +26501,12 @@ data = {
             }
         }
     ],
-    "Citi\u00ae Bronze\u00ae / AAdvantage\u00ae World MasterCard\u00ae": [
+    "Citi Bronze / AAdvantage World MasterCard": [
         43,
         {
             "_id": "5e690b260b077d5830cadc6d",
-            "title": "Citi\u00ae Bronze\u00ae / AAdvantage\u00ae World MasterCard\u00ae",
-            "original_title": "Citi\u00ae Bronze\u00ae / AAdvantage\u00ae World MasterCard\u00ae",
+            "title": "Citi Bronze / AAdvantage World MasterCard",
+            "original_title": "Citi Bronze / AAdvantage World MasterCard",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -26786,12 +26855,12 @@ data = {
             }
         }
     ],
-    "LAUNCH\u2122 Card": [
+    "LAUNCH Card": [
         44,
         {
             "_id": "5e690b260b077d5830cadea7",
-            "title": "LAUNCH\u2122 Card",
-            "original_title": "LAUNCH\u2122 Card",
+            "title": "LAUNCH Card",
+            "original_title": "LAUNCH Card",
             "fee": 0,
             "url": "https://www.bcu.org/Products/Credit-Cards/The-LAUNCH-Card",
             "foreign_fee": true,
@@ -26962,12 +27031,12 @@ data = {
             }
         }
     ],
-    "Rutgers University Cash Rewards Visa\u00ae Platinum Card": [
+    "Rutgers University Cash Rewards Visa Platinum Card": [
         45,
         {
             "_id": "5e690b260b077d5830cae1ed",
-            "title": "Rutgers University Cash Rewards Visa\u00ae Platinum Card",
-            "original_title": "Rutgers University Cash Rewards Visa\u00ae Platinum Card",
+            "title": "Rutgers University Cash Rewards Visa Platinum Card",
+            "original_title": "Rutgers University Cash Rewards Visa Platinum Card",
             "fee": 29,
             "url": "",
             "foreign_fee": true,
@@ -27450,12 +27519,12 @@ data = {
             }
         }
     ],
-    "Popular / AAdvantage\u00ae Visa Business": [
+    "Popular / AAdvantage Visa Business": [
         45,
         {
             "_id": "5e690b260b077d5830cae17e",
-            "title": "Popular / AAdvantage\u00ae Visa Business",
-            "original_title": "Popular / AAdvantage\u00ae Visa Business",
+            "title": "Popular / AAdvantage Visa Business",
+            "original_title": "Popular / AAdvantage Visa Business",
             "fee": 0,
             "url": "http://www.popular.com/en/aadvantage-visa-business",
             "foreign_fee": true,
@@ -27776,12 +27845,12 @@ data = {
             }
         }
     ],
-    "Air Force Club Membership MasterCard\u00ae": [
+    "Air Force Club Membership MasterCard": [
         46,
         {
             "_id": "5e690b260b077d5830cada55",
-            "title": "Air Force Club Membership MasterCard\u00ae",
-            "original_title": "Air Force Club Membership MasterCard\u00ae",
+            "title": "Air Force Club Membership MasterCard",
+            "original_title": "Air Force Club Membership MasterCard",
             "fee": 0,
             "url": "https://www.chase.com/online/military/military-credit-cards.htm#airforce_cards_wrapper",
             "foreign_fee": true,
@@ -27892,7 +27961,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Rewards Accelerator \u2013 earn more points per dollar the more you use your card."
+                    "title": "Rewards Accelerator  earn more points per dollar the more you use your card."
                 },
                 {
                     "title": "Earn two Reward points per $1 spent at restaurants, office supply stores, and for utility payments."
@@ -28060,12 +28129,12 @@ data = {
             }
         }
     ],
-    "American Express\u00ae Rewards Plus Gold Card": [
+    "American Express Rewards Plus Gold Card": [
         46,
         {
             "_id": "5e690b260b077d5830cadaa8",
-            "title": "American Express\u00ae Rewards Plus Gold Card",
-            "original_title": "American Express\u00ae Rewards Plus Gold Card",
+            "title": "American Express Rewards Plus Gold Card",
+            "original_title": "American Express Rewards Plus Gold Card",
             "nickname": "AMEX",
             "fee": 150,
             "url": "/cardbase/points-credit-cards",
@@ -28101,12 +28170,12 @@ data = {
             }
         }
     ],
-    "Platinum Edition\u00ae MasterCard\u00ae": [
+    "Platinum Edition MasterCard": [
         46,
         {
             "_id": "5e690b260b077d5830cae0bd",
-            "title": "Platinum Edition\u00ae MasterCard\u00ae",
-            "original_title": "Platinum Edition\u00ae MasterCard\u00ae",
+            "title": "Platinum Edition MasterCard",
+            "original_title": "Platinum Edition MasterCard",
             "fee": 0,
             "url": "https://www.firstbankcard.com/common/dynamicapp/web/chemical/learnmore_mcplat.html",
             "foreign_fee": true,
@@ -28209,12 +28278,12 @@ data = {
             }
         }
     ],
-    "First Access Visa\u00ae Credit Card": [
+    "First Access Visa Credit Card": [
         47,
         {
             "_id": "5e690b260b077d5830caddae",
-            "title": "First Access Visa\u00ae Credit Card",
-            "original_title": "First Access Visa\u00ae Credit Card",
+            "title": "First Access Visa Credit Card",
+            "original_title": "First Access Visa Credit Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -28230,7 +28299,7 @@ data = {
                     "title": "Receive your card more quickly with optional Expedited Processing (additional fee applies)"
                 },
                 {
-                    "title": "Perfect credit not required for approval; we may approve you when others won\u2019t"
+                    "title": "Perfect credit not required for approval; we may approve you when others wont"
                 },
                 {
                     "title": "Online Customer Center available 24 x 7"
@@ -28245,7 +28314,7 @@ data = {
                     "title": "If approved, pay a Program Fee and you can access the $300 credit limit (subject to available credit)"
                 },
                 {
-                    "title": "Get the security and convenience of a full-feature, unsecured Visa\u00ae Credit Card \u2013 accepted at millions of merchant and ATM locations nationwide and online"
+                    "title": "Get the security and convenience of a full-feature, unsecured Visa Credit Card  accepted at millions of merchant and ATM locations nationwide and online"
                 },
                 {
                     "title": "Get a result in as little as 60 seconds upon completion of the online application"
@@ -28350,12 +28419,12 @@ data = {
             }
         }
     ],
-    "Wells Fargo\u00ae Visa Signature\u00ae Card": [
+    "Wells Fargo Visa Signature Card": [
         47,
         {
             "_id": "5e690b260b077d5830cae545",
-            "title": "Wells Fargo\u00ae Visa Signature\u00ae Card",
-            "original_title": "Wells Fargo\u00ae Visa Signature\u00ae Card",
+            "title": "Wells Fargo Visa Signature Card",
+            "original_title": "Wells Fargo Visa Signature Card",
             "fee": 0,
             "url": "https://www.wellsfargo.com/credit-cards/visa-signature/",
             "foreign_fee": true,
@@ -28485,12 +28554,12 @@ data = {
             }
         }
     ],
-    "AAA Cash Rewards MasterCard\u00ae Credit Card": [
+    "AAA Cash Rewards MasterCard Credit Card": [
         47,
         {
             "_id": "5e690b260b077d5830cada33",
-            "title": "AAA Cash Rewards MasterCard\u00ae Credit Card",
-            "original_title": "AAA Cash Rewards MasterCard\u00ae Credit Card",
+            "title": "AAA Cash Rewards MasterCard Credit Card",
+            "original_title": "AAA Cash Rewards MasterCard Credit Card",
             "fee": 0,
             "url": "https://www.applyonlinenow.com/USCCapp/Ctl/entry?sc=VAB69N&mboxSession=1410800350285-965627#b",
             "foreign_fee": true,
@@ -28587,12 +28656,12 @@ data = {
             }
         }
     ],
-    "BoatUS BankAmericard Cash Rewards\u2122 Visa\u00ae": [
+    "BoatUS BankAmericard Cash Rewards Visa": [
         47,
         {
             "_id": "5e690b260b077d5830cadb4d",
-            "title": "BoatUS BankAmericard Cash Rewards\u2122 Visa\u00ae",
-            "original_title": "BoatUS BankAmericard Cash Rewards\u2122 Visa\u00ae",
+            "title": "BoatUS BankAmericard Cash Rewards Visa",
+            "original_title": "BoatUS BankAmericard Cash Rewards Visa",
             "fee": 0,
             "url": "https://www.applyonlinenow.com/USCCapp/Ctl/entry?sc=VAB56H&mboxSession=1411751119754-604263#b",
             "foreign_fee": true,
@@ -28895,12 +28964,12 @@ data = {
             }
         }
     ],
-    "Schwab Investor Card\u00ae from American Express": [
+    "Schwab Investor Card from American Express": [
         48,
         {
             "_id": "5e690b260b077d5830cae205",
-            "title": "Schwab Investor Card\u00ae from American Express",
-            "original_title": "Schwab Investor Card\u00ae from American Express",
+            "title": "Schwab Investor Card from American Express",
+            "original_title": "Schwab Investor Card from American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.schwab.com/public/schwab/investing/accounts_products/credit_cards",
@@ -28988,7 +29057,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Roadside Dispatch\u00ae, helps get you home when your car is disabled"
+                    "title": "Roadside Dispatch, helps get you home when your car is disabled"
                 },
                 {
                     "title": "No Minimum Finance Charge"
@@ -29065,19 +29134,19 @@ data = {
             }
         }
     ],
-    "Navy Federal Visa Signature\u00ae Flagship Rewards Credit Card": [
+    "Navy Federal Visa Signature Flagship Rewards Credit Card": [
         48,
         {
             "_id": "5e690b260b077d5830cadf54",
-            "title": "Navy Federal Visa Signature\u00ae Flagship Rewards Credit Card",
-            "original_title": "Navy Federal Visa Signature\u00ae Flagship Rewards Credit Card",
+            "title": "Navy Federal Visa Signature Flagship Rewards Credit Card",
+            "original_title": "Navy Federal Visa Signature Flagship Rewards Credit Card",
             "fee": 49,
             "url": "https://www.navyfederal.org/loans-cards/credit-cards/flagship-visa-signature/",
             "foreign_fee": false,
             "rewards_type": 10,
             "rewards": [
                 {
-                    "title": "Receive statement credit (up to $100) for Global Entry or TSA Pre\u2713"
+                    "title": "Receive statement credit (up to $100) for Global Entry or TSA Pre"
                 },
                 {
                     "title": "No foreign transaction fees"
@@ -29223,7 +29292,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 2 A+ Rewards Dollars per dollar spent on AirTran Airways and Southwest Airlines\u00ae purchases made directly with the airlines."
+                    "title": "Earn 2 A+ Rewards Dollars per dollar spent on AirTran Airways and Southwest Airlines purchases made directly with the airlines."
                 },
                 {
                     "title": "Earn 1 rewards dollar for every one dollar spent on all other purchases."
@@ -29688,12 +29757,12 @@ data = {
             }
         }
     ],
-    "1-2-3 REWARDS\u00ae Visa\u00ae Card": [
+    "1-2-3 REWARDS Visa Card": [
         49,
         {
             "_id": "5e690b260b077d5830cada30",
-            "title": "1-2-3 REWARDS\u00ae Visa\u00ae Card",
-            "original_title": "1-2-3 REWARDS\u00ae Visa\u00ae Card",
+            "title": "1-2-3 REWARDS Visa Card",
+            "original_title": "1-2-3 REWARDS Visa Card",
             "fee": 0,
             "url": "http://www.123rewardscard.com/",
             "foreign_fee": true,
@@ -29728,19 +29797,19 @@ data = {
             }
         }
     ],
-    "Venture\u00ae from Capital One\u00ae": [
+    "Venture from Capital One": [
         49,
         {
             "_id": "5e690b260b077d5830cae3db",
-            "title": "Venture\u00ae from Capital One\u00ae",
-            "original_title": "Venture\u00ae from Capital One\u00ae",
+            "title": "Venture from Capital One",
+            "original_title": "Venture from Capital One",
             "fee": 95,
             "url": "https://www.capitalone.com/credit-cards/venture/?irgwc=1&external_id=IRAFF_ZZce293c61587c41c29a64c5685cb78e40_USCIR_K1137073_A344893L_Ccc26dfffN3c5f11e995a00a26f1cca55_S26814--&applicantkeyid=",
             "foreign_fee": false,
             "rewards_type": 17,
             "rewards": [
                 {
-                    "title": "Earn unlimited 2X miles per dollar on every purchase, every day \u2014 plus 10X miles on thousands of hotels, through January 2020"
+                    "title": "Earn unlimited 2X miles per dollar on every purchase, every day  plus 10X miles on thousands of hotels, through January 2020"
                 },
                 {
                     "title": "Earn 50,000 bonus miles once you spend $3,000 on purchases within the first 3 months from account openingfootnote"
@@ -30160,7 +30229,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cade95",
             "title": "Journey Student Rewards from Capital One",
-            "original_title": "Journey\u2120 Student Rewards from Capital One\u00ae",
+            "original_title": "Journey Student Rewards from Capital One",
             "fee": 0,
             "url": "http://www.capitalone.com/credit-cards/journey-student/",
             "foreign_fee": false,
@@ -30170,10 +30239,10 @@ data = {
                     "title": "No annual fee and no foreign transaction fees"
                 },
                 {
-                    "title": "For every month you pay on time, you receive a 25% bonus\u2014that's a total of 1.25% cash back."
+                    "title": "For every month you pay on time, you receive a 25% bonusthat's a total of 1.25% cash back."
                 },
                 {
-                    "title": "Earn 1% cash back on every purchase, every month\u2014and pay no annual fee."
+                    "title": "Earn 1% cash back on every purchase, every monthand pay no annual fee."
                 }
             ],
             "earnings": [
@@ -30345,12 +30414,12 @@ data = {
             }
         }
     ],
-    "U.S. Bank Cash+\u2122 Visa Signature\u00ae Card": [
+    "U.S. Bank Cash+ Visa Signature Card": [
         50,
         {
             "_id": "5e690b260b077d5830cae361",
-            "title": "U.S. Bank Cash+\u2122 Visa Signature\u00ae Card",
-            "original_title": "U.S. Bank Cash+\u2122 Visa Signature\u00ae Card",
+            "title": "U.S. Bank Cash+ Visa Signature Card",
+            "original_title": "U.S. Bank Cash+ Visa Signature Card",
             "fee": 0,
             "url": "https://www.usbank.com/credit-cards/cash-plus-signature.html",
             "foreign_fee": true,
@@ -30458,12 +30527,12 @@ data = {
             }
         }
     ],
-    "Blue from American Express\u00ae Credit Card": [
+    "Blue from American Express Credit Card": [
         51,
         {
             "_id": "5e690b260b077d5830cadb38",
-            "title": "Blue from American Express\u00ae Credit Card",
-            "original_title": "Blue from American Express\u00ae Credit Card",
+            "title": "Blue from American Express Credit Card",
+            "original_title": "Blue from American Express Credit Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www304.americanexpress.com/credit-card/blue",
@@ -30606,7 +30675,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadbde",
             "title": "Capital One Secured Mastercard",
-            "original_title": "Capital One\u00ae Secured MasterCard\u00ae",
+            "original_title": "Capital One Secured MasterCard",
             "fee": 0,
             "url": "http://www.capitalone.com/credit-cards/secured-mastercard/",
             "foreign_fee": false,
@@ -30672,12 +30741,12 @@ data = {
             }
         }
     ],
-    "USAA Rate Advantage Visa Platinum\u00ae Card": [
+    "USAA Rate Advantage Visa Platinum Card": [
         51,
         {
             "_id": "5e690b260b077d5830cae3cb",
-            "title": "USAA Rate Advantage Visa Platinum\u00ae Card",
-            "original_title": "USAA Rate Advantage Visa Platinum\u00ae Card",
+            "title": "USAA Rate Advantage Visa Platinum Card",
+            "original_title": "USAA Rate Advantage Visa Platinum Card",
             "fee": 0,
             "url": "",
             "foreign_fee": false,
@@ -30829,7 +30898,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Get no-cost withdrawals from MoneyPass\u00ae ATMs in the U.S.* (Other ATMs might cost you.)"
+                    "title": "Get no-cost withdrawals from MoneyPass ATMs in the U.S.* (Other ATMs might cost you.)"
                 }
             ],
             "earnings": [
@@ -30965,12 +31034,12 @@ data = {
             }
         }
     ],
-    "U.S. Bank FlexPerks\u00ae Business Cash Rewards Visa\u00ae Card": [
+    "U.S. Bank FlexPerks Business Cash Rewards Visa Card": [
         51,
         {
             "_id": "5e690b260b077d5830cae362",
-            "title": "U.S. Bank FlexPerks\u00ae Business Cash Rewards Visa\u00ae Card",
-            "original_title": "U.S. Bank FlexPerks\u00ae Business Cash Rewards Visa\u00ae Card",
+            "title": "U.S. Bank FlexPerks Business Cash Rewards Visa Card",
+            "original_title": "U.S. Bank FlexPerks Business Cash Rewards Visa Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -31060,12 +31129,12 @@ data = {
             }
         }
     ],
-    "PenFed Defender Visa Signature\u00ae Card": [
+    "PenFed Defender Visa Signature Card": [
         52,
         {
             "_id": "5e690b260b077d5830cadfba",
-            "title": "PenFed Defender Visa Signature\u00ae Card",
-            "original_title": "PenFed Defender Visa Signature\u00ae Card",
+            "title": "PenFed Defender Visa Signature Card",
+            "original_title": "PenFed Defender Visa Signature Card",
             "fee": 0,
             "url": "https://www.penfed.org/VisaDefender/",
             "foreign_fee": true,
@@ -31187,12 +31256,12 @@ data = {
             }
         }
     ],
-    "USAA Cash Rewards\u00ae American Express\u00ae Card": [
+    "USAA Cash Rewards American Express Card": [
         52,
         {
             "_id": "5e690b260b077d5830cae3c2",
-            "title": "USAA Cash Rewards\u00ae American Express\u00ae Card",
-            "original_title": "USAA Cash Rewards\u00ae American Express\u00ae Card",
+            "title": "USAA Cash Rewards American Express Card",
+            "original_title": "USAA Cash Rewards American Express Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.usaa.com/inet/pages/banking_credit_cards_amex?akredirect=true",
@@ -31366,7 +31435,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadd1f",
             "title": "Costco Anywhere Visa Card by Citi",
-            "original_title": "Costco Anywhere Visa\u00ae Card by Citi",
+            "original_title": "Costco Anywhere Visa Card by Citi",
             "fee": 0,
             "url": "https://www.costco.com/credit-card.html",
             "foreign_fee": false,
@@ -31490,7 +31559,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "You\u2019ll have an ongoing opportunity to purchase premium seating for Broadway shows in New York City and on tour across North America. Additional benefits may include backstage tours and \"meet and greets\" with performers. All ticket purchases and additional benefits are subject to availability."
+                    "title": "Youll have an ongoing opportunity to purchase premium seating for Broadway shows in New York City and on tour across North America. Additional benefits may include backstage tours and \"meet and greets\" with performers. All ticket purchases and additional benefits are subject to availability."
                 },
                 {
                     "title": "Visa Infinite Luxury Hotel Collection"
@@ -31505,7 +31574,7 @@ data = {
                     "title": "Save $100 on air travel when you use your Crystal Visa Infinite Card to book a qualifying U.S. domestic round-trip coach airline itinerary for 2 to 5 travelers"
                 },
                 {
-                    "title": "Receive a statement credit of up to $550 per account per calendar year with $50,000 yearly spend \u2013 for any airline lounge club worldwide."
+                    "title": "Receive a statement credit of up to $550 per account per calendar year with $50,000 yearly spend  for any airline lounge club worldwide."
                 },
                 {
                     "title": "Receive a statement credit of up to $350 per card, per calendar year for Qualifying Airline Purchases."
@@ -31523,13 +31592,13 @@ data = {
                     "title": "Earn 1 Point per $1 spent on all other purchases."
                 },
                 {
-                    "title": "Complimentary Priority Pass\u2122 Select Airport Lounge Access"
+                    "title": "Complimentary Priority Pass Select Airport Lounge Access"
                 },
                 {
                     "title": "Auto Rental Collision Damage Waiver"
                 },
                 {
-                    "title": "12 Complimentary Gogo\u00ae Inflight Wi-Fi Passes Per Year"
+                    "title": "12 Complimentary Gogo Inflight Wi-Fi Passes Per Year"
                 },
                 {
                     "title": "$100 Global Entry Application Fee Statement Credit"
@@ -31650,12 +31719,12 @@ data = {
             }
         }
     ],
-    "Bank of America\u00ae WorldPoints\u00ae Travel Rewards for Business Visa\u00ae Card": [
+    "Bank of America WorldPoints Travel Rewards for Business Visa Card": [
         53,
         {
             "_id": "5e690b260b077d5830cadaef",
-            "title": "Bank of America\u00ae WorldPoints\u00ae Travel Rewards for Business Visa\u00ae Card",
-            "original_title": "Bank of America\u00ae WorldPoints\u00ae Travel Rewards for Business Visa\u00ae Card",
+            "title": "Bank of America WorldPoints Travel Rewards for Business Visa Card",
+            "original_title": "Bank of America WorldPoints Travel Rewards for Business Visa Card",
             "fee": 0,
             "url": "https://business.bankofamerica.com/creditcard/products/travel-rewards-business-credit-card",
             "foreign_fee": true,
@@ -31665,7 +31734,7 @@ data = {
                     "title": "Earn 3 points for every $1 spent for travel booked through Bank of America's Travel Center."
                 },
                 {
-                    "title": "Earn 1.5 WorldPoints\u00ae rewards points for every $1 on all purchases."
+                    "title": "Earn 1.5 WorldPoints rewards points for every $1 on all purchases."
                 }
             ],
             "earnings": [],
@@ -31973,11 +32042,11 @@ data = {
             }
         }
     ],
-    "ABOC Platinum Rewards Mastercard\u00ae": [
+    "ABOC Platinum Rewards Mastercard": [
         53,
         {
             "_id": "5e690b260b077d5830cada42",
-            "title": "ABOC Platinum Rewards Mastercard\u00ae",
+            "title": "ABOC Platinum Rewards Mastercard",
             "original_title": "ABOC Platinum Rewards Mastercard",
             "nickname": "ABOC",
             "fee": 0,
@@ -32001,7 +32070,7 @@ data = {
                     "title": "Earn 5x rewards on up to $1,500 in combined purchases each quarter in popular categories such as dining, groceries, travel, and automotive"
                 },
                 {
-                    "title": "Earn 5x points on qualifying airline, cruise, car rental, hotel, travel agency purchases, gas, tolls, and ride share. Must have a registered account at ABOCRewards.com. Valid 7/01/20 \u2013 9/30/20."
+                    "title": "Earn 5x points on qualifying airline, cruise, car rental, hotel, travel agency purchases, gas, tolls, and ride share. Must have a registered account at ABOCRewards.com. Valid 7/01/20  9/30/20."
                 },
                 {
                     "title": "Earn $150 Statement Credit after you spend $1,200 on purchases within the first 90 days from account opening"
@@ -32013,17 +32082,17 @@ data = {
             "earnings": [
                 {
                     "points": 5,
-                    "description": "Earn 5x points on qualifying airline, cruise, car rental, hotel, travel agency purchases, gas, tolls, and ride share. Must have a registered account at ABOCRewards.com. Valid 7/01/20 \u2013 9/30/20.",
+                    "description": "Earn 5x points on qualifying airline, cruise, car rental, hotel, travel agency purchases, gas, tolls, and ride share. Must have a registered account at ABOCRewards.com. Valid 7/01/20  9/30/20.",
                     "category": 1
                 },
                 {
                     "points": 5,
-                    "description": "Earn 5x points on qualifying airline, cruise, car rental, hotel, travel agency purchases, gas, tolls, and ride share. Must have a registered account at ABOCRewards.com. Valid 7/01/20 \u2013 9/30/20.",
+                    "description": "Earn 5x points on qualifying airline, cruise, car rental, hotel, travel agency purchases, gas, tolls, and ride share. Must have a registered account at ABOCRewards.com. Valid 7/01/20  9/30/20.",
                     "category": 3
                 },
                 {
                     "points": 5,
-                    "description": "Earn 5x points on qualifying airline, cruise, car rental, hotel, travel agency purchases, gas, tolls, and ride share. Must have a registered account at ABOCRewards.com. Valid 7/01/20 \u2013 9/30/20.",
+                    "description": "Earn 5x points on qualifying airline, cruise, car rental, hotel, travel agency purchases, gas, tolls, and ride share. Must have a registered account at ABOCRewards.com. Valid 7/01/20  9/30/20.",
                     "category": 10
                 },
                 {
@@ -32060,14 +32129,14 @@ data = {
         {
             "_id": "5e690b260b077d5830cadbe5",
             "title": "Capital One Venture Rewards Credit Card",
-            "original_title": "Capital One\u00ae Venture\u00ae Rewards Credit Card",
+            "original_title": "Capital One Venture Rewards Credit Card",
             "fee": 95,
             "url": "http://www.capitalone.com/credit-cards/venture/",
             "foreign_fee": false,
             "rewards_type": 17,
             "rewards": [
                 {
-                    "title": "Receive up to $100 application fee credit for Global Entry or TSA Pre\u2713"
+                    "title": "Receive up to $100 application fee credit for Global Entry or TSA Pre"
                 },
                 {
                     "title": "Earn 2 miles per dollar on every purchase."
@@ -32172,12 +32241,12 @@ data = {
             }
         }
     ],
-    "AAdvantage\u00ae Aviator\u00ae Business Mastercard\u00ae": [
+    "AAdvantage Aviator Business Mastercard": [
         53,
         {
             "_id": "5e690b260b077d5830cada3b",
-            "title": "AAdvantage\u00ae Aviator\u00ae Business Mastercard\u00ae",
-            "original_title": "AAdvantage\u00ae Aviator\u00ae Business Mastercard\u00ae",
+            "title": "AAdvantage Aviator Business Mastercard",
+            "original_title": "AAdvantage Aviator Business Mastercard",
             "fee": 95,
             "url": "https://cards.barclaycardus.com/banking/cards/aadvantage-aviator-business-mastercard/",
             "foreign_fee": false,
@@ -32196,13 +32265,13 @@ data = {
                     "title": "First checked bag free  on eligible bags"
                 },
                 {
-                    "title": "Earn 2X AAdvantage\u00ae miles  for every one dollar spent on eligible American Airlines purchases"
+                    "title": "Earn 2X AAdvantage miles  for every one dollar spent on eligible American Airlines purchases"
                 },
                 {
-                    "title": "Earn 2X AAdvantage\u00ae miles  for every one dollar spent at eligible office supply, telecom and car rental merchants"
+                    "title": "Earn 2X AAdvantage miles  for every one dollar spent at eligible office supply, telecom and car rental merchants"
                 },
                 {
-                    "title": "Earn 1X AAdvantage\u00ae miles  for every one dollar spent on all other purchases"
+                    "title": "Earn 1X AAdvantage miles  for every one dollar spent on all other purchases"
                 },
                 {
                     "title": "Earn $3,000 Elite Qualifying Dollars  after spending $25,000 on purchases each calendar year"
@@ -32211,7 +32280,7 @@ data = {
                     "title": "Companion Certificate  good for 1 guest at $99, issued each year after your account anniversary after spending $30,000 or more on eligible purchases (taxes and fees apply)"
                 },
                 {
-                    "title": "5% AAdvantage\u00ae mileage bonus  earned every year after your account anniversary date based on the total number of miles earned using your card"
+                    "title": "5% AAdvantage mileage bonus  earned every year after your account anniversary date based on the total number of miles earned using your card"
                 },
                 {
                     "title": "$0 Fraud Liability protection  means you're not responsible for charges you did not authorize"
@@ -32220,27 +32289,27 @@ data = {
             "earnings": [
                 {
                     "points": 2,
-                    "description": "Earn 2X AAdvantage\u00ae miles  for every one dollar spent on eligible American Airlines purchases",
+                    "description": "Earn 2X AAdvantage miles  for every one dollar spent on eligible American Airlines purchases",
                     "category": 1
                 },
                 {
                     "points": 2,
-                    "description": "Earn 2X AAdvantage\u00ae miles  for every one dollar spent at eligible office supply, telecom and car rental merchants",
+                    "description": "Earn 2X AAdvantage miles  for every one dollar spent at eligible office supply, telecom and car rental merchants",
                     "category": 3
                 },
                 {
                     "points": 2,
-                    "description": "Earn 2X AAdvantage\u00ae miles  for every one dollar spent at eligible office supply, telecom and car rental merchants",
+                    "description": "Earn 2X AAdvantage miles  for every one dollar spent at eligible office supply, telecom and car rental merchants",
                     "category": 11
                 },
                 {
                     "points": 2,
-                    "description": "Earn 2X AAdvantage\u00ae miles  for every one dollar spent at eligible office supply, telecom and car rental merchants",
+                    "description": "Earn 2X AAdvantage miles  for every one dollar spent at eligible office supply, telecom and car rental merchants",
                     "category": 13
                 },
                 {
                     "points": 1,
-                    "description": "Earn 1X AAdvantage\u00ae miles  for every one dollar spent on all other purchases",
+                    "description": "Earn 1X AAdvantage miles  for every one dollar spent on all other purchases",
                     "category": 7
                 }
             ],
@@ -32456,12 +32525,12 @@ data = {
             }
         }
     ],
-    "The Humane Society of the U.S. Discover it\u00ae": [
+    "The Humane Society of the U.S. Discover it": [
         54,
         {
             "_id": "5e690b260b077d5830cae32a",
-            "title": "The Humane Society of the U.S. Discover it\u00ae",
-            "original_title": "The Humane Society of the U.S. Discover it\u00ae",
+            "title": "The Humane Society of the U.S. Discover it",
+            "original_title": "The Humane Society of the U.S. Discover it",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -32575,22 +32644,22 @@ data = {
             }
         }
     ],
-    "Starbucks\u00ae Rewards Visa\u00ae Card": [
+    "Starbucks Rewards Visa Card": [
         54,
         {
             "_id": "5e690b260b077d5830cae2c7",
-            "title": "Starbucks\u00ae Rewards Visa\u00ae Card",
-            "original_title": "Starbucks\u00ae Rewards Visa\u00ae Card",
+            "title": "Starbucks Rewards Visa Card",
+            "original_title": "Starbucks Rewards Visa Card",
             "fee": 49,
             "url": "https://creditcards.chase.com/rewards-credit-cards/starbucks-rewards",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn up to 3 Stars per $1 spent at Starbucks\u00ae stores"
+                    "title": "Earn up to 3 Stars per $1 spent at Starbucks stores"
                 },
                 {
-                    "title": "Earn 300 Bonus Stars the first time you use your Starbucks\u00ae Rewards Visa\u00ae Card to digitally load your registered Starbucks Card in your App."
+                    "title": "Earn 300 Bonus Stars the first time you use your Starbucks Rewards Visa Card to digitally load your registered Starbucks Card in your App."
                 },
                 {
                     "title": "Earn 1 Star per $4 on purchases everywhere else"
@@ -32599,7 +32668,7 @@ data = {
                     "title": "Earn 1 Star per $2 you spend at grocery stores, on local transit and commuting, and on internet, cable, and phone services"
                 },
                 {
-                    "title": "Barista Picks 8 times a year: A selection of food and drink items chosen by Starbucks\u00ae baristas for cardmembers redeemable at participating Starbucks\u00ae stores."
+                    "title": "Barista Picks 8 times a year: A selection of food and drink items chosen by Starbucks baristas for cardmembers redeemable at participating Starbucks stores."
                 },
                 {
                     "title": "6,500 Stars after you spend $500 on purchases in the first 3 months."
@@ -32608,7 +32677,7 @@ data = {
             "earnings": [
                 {
                     "points": 3,
-                    "description": "Earn up to 3 Stars per $1 spent at Starbucks\u00ae stores, 1 star per $4 on purchases everywhere else",
+                    "description": "Earn up to 3 Stars per $1 spent at Starbucks stores, 1 star per $4 on purchases everywhere else",
                     "category": 14
                 },
                 {
@@ -32649,25 +32718,25 @@ data = {
             }
         }
     ],
-    "Harley-Davidson\u00ae Visa\u00ae Credit Card": [
+    "Harley-Davidson Visa Credit Card": [
         54,
         {
             "_id": "5e690b260b077d5830cade4d",
-            "title": "Harley-Davidson\u00ae Visa\u00ae Credit Card",
-            "original_title": "Harley-Davidson\u00ae Visa\u00ae Credit Card",
+            "title": "Harley-Davidson Visa Credit Card",
+            "original_title": "Harley-Davidson Visa Credit Card",
             "fee": 0,
             "url": "http://www.h-dvisa.com/",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 3 points for every $1 spent at Harley-Davidson\u00ae dealerships."
+                    "title": "Earn 3 points for every $1 spent at Harley-Davidson dealerships."
                 },
                 {
                     "title": "Earn 2 points for every $1 spent at gas stations, restaurants, bars, and lodging merchants."
                 },
                 {
-                    "title": "Earn 1 point for every $1 everywhere else, redeem points for Harley Chrome\u00ae Cash."
+                    "title": "Earn 1 point for every $1 everywhere else, redeem points for Harley Chrome Cash."
                 }
             ],
             "earnings": [],
@@ -32694,7 +32763,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadbdf",
             "title": "Capital One Spark Cash for Business ",
-            "original_title": "Capital One\u00ae Spark\u00ae Cash for Business",
+            "original_title": "Capital One Spark Cash for Business",
             "fee": 95,
             "url": "http://www.capitalone.com/credit-cards/business/spark-cash/",
             "foreign_fee": false,
@@ -32765,12 +32834,12 @@ data = {
             }
         }
     ],
-    "Disney Premier Visa\u00ae Card": [
+    "Disney Premier Visa Card": [
         55,
         {
             "_id": "5e690b260b077d5830cadd71",
-            "title": "Disney Premier Visa\u00ae Card",
-            "original_title": "Disney Premier Visa\u00ae Card",
+            "title": "Disney Premier Visa Card",
+            "original_title": "Disney Premier Visa Card",
             "fee": 49,
             "url": "https://creditcards.chase.com/credit-cards/disney-premier-card.aspx",
             "foreign_fee": true,
@@ -32890,12 +32959,12 @@ data = {
             }
         }
     ],
-    "AAdvantage\u00ae Aviator\u00ae Red World Elite Mastercard": [
+    "AAdvantage Aviator Red World Elite Mastercard": [
         55,
         {
             "_id": "5e690b260b077d5830cada3c",
-            "title": "AAdvantage\u00ae Aviator\u00ae Red World Elite Mastercard",
-            "original_title": "AAdvantage\u00ae Aviator\u00ae Red World Elite Mastercard",
+            "title": "AAdvantage Aviator Red World Elite Mastercard",
+            "original_title": "AAdvantage Aviator Red World Elite Mastercard",
             "fee": 99,
             "url": "https://www.barclaycardus.com/servicing/red",
             "foreign_fee": false,
@@ -32917,7 +32986,7 @@ data = {
                     "title": "Earn 2X miles  for every one dollar spent on eligible American Airlines purchases."
                 },
                 {
-                    "title": "Earn 1X AAdvantage\u00ae miles  for every one dollar spent on all other purchases."
+                    "title": "Earn 1X AAdvantage miles  for every one dollar spent on all other purchases."
                 },
                 {
                     "title": "Anniversary Companion Certificate: Each anniversary year, earn a Companion Certificate good for 1 guest at $99 (plus taxes and fees) after spending $20,000 on purchases and your account remains open for 45 days after your anniversary date."
@@ -32931,7 +33000,7 @@ data = {
                 },
                 {
                     "points": 1,
-                    "description": "Earn 1 AAdvantage\u00ae mile per dollar spent on all other purchases",
+                    "description": "Earn 1 AAdvantage mile per dollar spent on all other purchases",
                     "category": 7
                 }
             ],
@@ -32953,12 +33022,12 @@ data = {
             }
         }
     ],
-    "USAA Rewards Visa\u00ae Card": [
+    "USAA Rewards Visa Card": [
         55,
         {
             "_id": "5e690b260b077d5830cae3cd",
-            "title": "USAA Rewards Visa\u00ae Card",
-            "original_title": "USAA Rewards Visa\u00ae Card",
+            "title": "USAA Rewards Visa Card",
+            "original_title": "USAA Rewards Visa Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -33143,12 +33212,12 @@ data = {
             }
         }
     ],
-    "Citi\u00ae Dividend Platinum Select\u00ae MasterCard": [
+    "Citi Dividend Platinum Select MasterCard": [
         55,
         {
             "_id": "5e690b260b077d5830cadc71",
-            "title": "Citi\u00ae Dividend Platinum Select\u00ae MasterCard",
-            "original_title": "Citi\u00ae Dividend Platinum Select\u00ae MasterCard",
+            "title": "Citi Dividend Platinum Select MasterCard",
+            "original_title": "Citi Dividend Platinum Select MasterCard",
             "fee": 39,
             "url": "",
             "foreign_fee": true,
@@ -33327,12 +33396,12 @@ data = {
             }
         }
     ],
-    "USAA Cash Rewards\u00ae Visa\u00ae Card": [
+    "USAA Cash Rewards Visa Card": [
         56,
         {
             "_id": "5e690b260b077d5830cae3c3",
-            "title": "USAA Cash Rewards\u00ae Visa\u00ae Card",
-            "original_title": "USAA Cash Rewards\u00ae Visa\u00ae Card",
+            "title": "USAA Cash Rewards Visa Card",
+            "original_title": "USAA Cash Rewards Visa Card",
             "fee": 0,
             "url": "https://www.usaa.com/inet/pages/bank_cc_cash_rewards_visa",
             "foreign_fee": true,
@@ -33546,12 +33615,12 @@ data = {
             }
         }
     ],
-    "Scotiabank Value\u00ae VISA": [
+    "Scotiabank Value VISA": [
         56,
         {
             "_id": "5e690b260b077d5830cae20c",
-            "title": "Scotiabank Value\u00ae VISA",
-            "original_title": "Scotiabank Value\u00ae VISA",
+            "title": "Scotiabank Value VISA",
+            "original_title": "Scotiabank Value VISA",
             "nickname": "AMEX",
             "fee": 0,
             "url": "",
@@ -33611,12 +33680,12 @@ data = {
             }
         }
     ],
-    "Sigma Chi Visa\u00ae Signature": [
+    "Sigma Chi Visa Signature": [
         56,
         {
             "_id": "5e690b260b077d5830cae286",
-            "title": "Sigma Chi Visa\u00ae Signature",
-            "original_title": "Sigma Chi Visa\u00ae Signature",
+            "title": "Sigma Chi Visa Signature",
+            "original_title": "Sigma Chi Visa Signature",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -33645,12 +33714,12 @@ data = {
             }
         }
     ],
-    "Delta SkyMiles\u00ae Options Credit Card": [
+    "Delta SkyMiles Options Credit Card": [
         56,
         {
             "_id": "5e690b260b077d5830cadd44",
-            "title": "Delta SkyMiles\u00ae Options Credit Card",
-            "original_title": "Delta SkyMiles\u00ae Options Credit Card",
+            "title": "Delta SkyMiles Options Credit Card",
+            "original_title": "Delta SkyMiles Options Credit Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://web.aexp-static.com/us/content/pdf/cardmember-agreements/delta-skymiles-options/DeltaSkyMilesOptions.pdf",
@@ -33717,12 +33786,12 @@ data = {
             }
         }
     ],
-    "AAFP BankAmericard Cash Rewards\u2122 Visa\u00ae": [
+    "AAFP BankAmericard Cash Rewards Visa": [
         56,
         {
             "_id": "5e690b260b077d5830cada3d",
-            "title": "AAFP BankAmericard Cash Rewards\u2122 Visa\u00ae",
-            "original_title": "AAFP BankAmericard Cash Rewards\u2122 Visa\u00ae",
+            "title": "AAFP BankAmericard Cash Rewards Visa",
+            "original_title": "AAFP BankAmericard Cash Rewards Visa",
             "fee": 0,
             "url": "http://www.aafp.org/about/membership/services/discounts/credit-cards.html",
             "foreign_fee": true,
@@ -33754,12 +33823,12 @@ data = {
             }
         }
     ],
-    "Detroit Red Wings Cash Rewards American Express\u00ae Card": [
+    "Detroit Red Wings Cash Rewards American Express Card": [
         56,
         {
             "_id": "5e690b260b077d5830cadd4c",
-            "title": "Detroit Red Wings Cash Rewards American Express\u00ae Card",
-            "original_title": "Detroit Red Wings Cash Rewards American Express\u00ae Card",
+            "title": "Detroit Red Wings Cash Rewards American Express Card",
+            "original_title": "Detroit Red Wings Cash Rewards American Express Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.flagstar.com/personal/borrowing/detroit-red-wings-credit-cards.html",
@@ -34019,12 +34088,12 @@ data = {
             }
         }
     ],
-    "American Express\u00ae Corporate Platinum Card\u00ae": [
+    "American Express Corporate Platinum Card": [
         57,
         {
             "_id": "5e690b260b077d5830cadaa3",
-            "title": "American Express\u00ae Corporate Platinum Card\u00ae",
-            "original_title": "American Express\u00ae Corporate Platinum Card\u00ae",
+            "title": "American Express Corporate Platinum Card",
+            "original_title": "American Express Corporate Platinum Card",
             "nickname": "AMEX",
             "fee": 395,
             "url": "https://www.americanexpress.com/us/credit-cards/business/corporate-credit-cards/american-express-platinum-corporate-card",
@@ -34032,7 +34101,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 1 Membership Rewards\u00ae point for each dollar you spend on eligible purchases."
+                    "title": "Earn 1 Membership Rewards point for each dollar you spend on eligible purchases."
                 },
                 {
                     "title": "By invitation only."
@@ -34044,7 +34113,7 @@ data = {
             "earnings": [
                 {
                     "points": 1,
-                    "description": "Earn 1 Membership Rewards\u00ae point for each dollar you spend on eligible purchases.",
+                    "description": "Earn 1 Membership Rewards point for each dollar you spend on eligible purchases.",
                     "category": 7
                 }
             ],
@@ -34078,13 +34147,13 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Upgrade to Hyatt Gold Passport Platinum membership --- And maintain Platinum status for as long as you are a cardmember. Platinum benefits include a 15% point bonus on eligible spend, complimentary in-room Internet access, and late checkout \u2014 just to name a few."
+                    "title": "Upgrade to Hyatt Gold Passport Platinum membership --- And maintain Platinum status for as long as you are a cardmember. Platinum benefits include a 15% point bonus on eligible spend, complimentary in-room Internet access, and late checkout  just to name a few."
                 },
                 {
                     "title": "Get 5,000 bonus points when you add an authorized user to your account and make a purchase with your card during the first 3 months as a cardmember. This product is available to you if you do not have this card and have not received a new cardmember bonus for this card in the past 24 months."
                 },
                 {
-                    "title": "Free night at any category 1 \u2013 4 property; Every year after your cardmember anniversary."
+                    "title": "Free night at any category 1  4 property; Every year after your cardmember anniversary."
                 },
                 {
                     "title": "Earn 2 free nights at Hyatt, worldwide after you make $1,000 in purchases in the first 3 months after account opening"
@@ -34096,7 +34165,7 @@ data = {
                     "title": "2 points for every $1 spent at restaurants, on airline tickets purchased directly from the airline and at car rental agencies."
                 },
                 {
-                    "title": "1 point for every $1 spent on purchases anywhere else you use your card \u2014 there are no limits to the points you can earn."
+                    "title": "1 point for every $1 spent on purchases anywhere else you use your card  there are no limits to the points you can earn."
                 }
             ],
             "earnings": [
@@ -34117,7 +34186,7 @@ data = {
                 },
                 {
                     "points": 1,
-                    "description": "1 point for every $1 spent on purchases anywhere else you use your card \u2014 there are no limits to the points you can earn.",
+                    "description": "1 point for every $1 spent on purchases anywhere else you use your card  there are no limits to the points you can earn.",
                     "category": 7
                 }
             ],
@@ -34453,12 +34522,12 @@ data = {
             }
         }
     ],
-    "Discover it\u00ae chrome Secured": [
+    "Discover it chrome Secured": [
         58,
         {
             "_id": "5e690b260b077d5830cadd68",
-            "title": "Discover it\u00ae chrome Secured",
-            "original_title": "Discover it\u00ae chrome Secured",
+            "title": "Discover it chrome Secured",
+            "original_title": "Discover it chrome Secured",
             "fee": 0,
             "url": "https://www.discover.com/credit-cards/chrome.html",
             "foreign_fee": false,
@@ -34490,12 +34559,12 @@ data = {
             }
         }
     ],
-    "Power Travel Rewards World MasterCard\u00ae": [
+    "Power Travel Rewards World MasterCard": [
         58,
         {
             "_id": "5e690b260b077d5830cae183",
-            "title": "Power Travel Rewards World MasterCard\u00ae",
-            "original_title": "Power Travel Rewards World MasterCard\u00ae",
+            "title": "Power Travel Rewards World MasterCard",
+            "original_title": "Power Travel Rewards World MasterCard",
             "fee": 0,
             "url": "https://www.ssfcu.org/en-us/loans-credit/credit-cards/Pages/travel-rewards.aspx",
             "foreign_fee": true,
@@ -34564,12 +34633,12 @@ data = {
             }
         }
     ],
-    "Detroit Red Wings Visa\u00ae Platinum Card": [
+    "Detroit Red Wings Visa Platinum Card": [
         58,
         {
             "_id": "5e690b260b077d5830cadd50",
-            "title": "Detroit Red Wings Visa\u00ae Platinum Card",
-            "original_title": "Detroit Red Wings Visa\u00ae Platinum Card",
+            "title": "Detroit Red Wings Visa Platinum Card",
+            "original_title": "Detroit Red Wings Visa Platinum Card",
             "fee": 0,
             "url": "https://www.flagstar.com/personal/borrowing/detroit-red-wings-credit-cards.html",
             "foreign_fee": true,
@@ -35051,7 +35120,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadd1e",
             "title": "Costco Anywhere Visa Business Card by Citi ",
-            "original_title": "Costco Anywhere Visa\u00ae Business Card by Citi",
+            "original_title": "Costco Anywhere Visa Business Card by Citi",
             "fee": 0,
             "url": "https://www.costco.com/credit-card.html",
             "foreign_fee": false,
@@ -35177,12 +35246,12 @@ data = {
             }
         }
     ],
-    "Rensselaer Alumni Association Visa\u00ae Signature Card": [
+    "Rensselaer Alumni Association Visa Signature Card": [
         59,
         {
             "_id": "5e690b260b077d5830cae1ce",
-            "title": "Rensselaer Alumni Association Visa\u00ae Signature Card",
-            "original_title": "Rensselaer Alumni Association Visa\u00ae Signature Card",
+            "title": "Rensselaer Alumni Association Visa Signature Card",
+            "original_title": "Rensselaer Alumni Association Visa Signature Card",
             "fee": 0,
             "url": "http://alumni.rpi.edu/s/1225/alumni/index2col.aspx?sid=1225&gid=1&pgid=1072",
             "foreign_fee": true,
@@ -35211,12 +35280,12 @@ data = {
             }
         }
     ],
-    "HSBC Platinum MasterCard\u00ae with Cash or Fly Rewards": [
+    "HSBC Platinum MasterCard with Cash or Fly Rewards": [
         59,
         {
             "_id": "5e690b260b077d5830cade66",
-            "title": "HSBC Platinum MasterCard\u00ae with Cash or Fly Rewards",
-            "original_title": "HSBC Platinum MasterCard\u00ae with Cash or Fly Rewards",
+            "title": "HSBC Platinum MasterCard with Cash or Fly Rewards",
+            "original_title": "HSBC Platinum MasterCard with Cash or Fly Rewards",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -35381,12 +35450,12 @@ data = {
             }
         }
     ],
-    "Spirit Airlines Platinum Plus\u00ae MasterCard Credit Card": [
+    "Spirit Airlines Platinum Plus MasterCard Credit Card": [
         59,
         {
             "_id": "5e690b260b077d5830cae2ad",
-            "title": "Spirit Airlines Platinum Plus\u00ae MasterCard Credit Card",
-            "original_title": "Spirit Airlines Platinum Plus\u00ae MasterCard Credit Card",
+            "title": "Spirit Airlines Platinum Plus MasterCard Credit Card",
+            "original_title": "Spirit Airlines Platinum Plus MasterCard Credit Card",
             "fee": 19,
             "url": "",
             "foreign_fee": true,
@@ -35449,12 +35518,12 @@ data = {
             }
         }
     ],
-    "Mercedes Benz Platinum Card\u00ae from American Express": [
+    "Mercedes Benz Platinum Card from American Express": [
         60,
         {
             "_id": "5e690b260b077d5830cadf18",
-            "title": "Mercedes Benz Platinum Card\u00ae from American Express",
-            "original_title": "Mercedes Benz Platinum Card\u00ae from American Express",
+            "title": "Mercedes Benz Platinum Card from American Express",
+            "original_title": "Mercedes Benz Platinum Card from American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "",
@@ -35623,12 +35692,12 @@ data = {
             }
         }
     ],
-    "BP Business Solutions MasterCard\u00ae": [
+    "BP Business Solutions MasterCard": [
         60,
         {
             "_id": "5e690b260b077d5830cadb5e",
-            "title": "BP Business Solutions MasterCard\u00ae",
-            "original_title": "BP Business Solutions MasterCard\u00ae",
+            "title": "BP Business Solutions MasterCard",
+            "original_title": "BP Business Solutions MasterCard",
             "fee": 0,
             "url": "https://www.bpbusinesssolutions.com/register?productid=121&securecheck=true",
             "foreign_fee": true,
@@ -35798,12 +35867,12 @@ data = {
             }
         }
     ],
-    "UConn Visa\u00ae Platinum Card": [
+    "UConn Visa Platinum Card": [
         60,
         {
             "_id": "5e690b260b077d5830cae379",
-            "title": "UConn Visa\u00ae Platinum Card",
-            "original_title": "UConn Visa\u00ae Platinum Card",
+            "title": "UConn Visa Platinum Card",
+            "original_title": "UConn Visa Platinum Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -36206,12 +36275,12 @@ data = {
             }
         }
     ],
-    "Popular / AAdvantage\u00ae Visa Infinite": [
+    "Popular / AAdvantage Visa Infinite": [
         61,
         {
             "_id": "5e690b260b077d5830cae17f",
-            "title": "Popular / AAdvantage\u00ae Visa Infinite",
-            "original_title": "Popular / AAdvantage\u00ae Visa Infinite",
+            "title": "Popular / AAdvantage Visa Infinite",
+            "original_title": "Popular / AAdvantage Visa Infinite",
             "fee": 195,
             "url": "http://www.popular.com/en/aadvantage-visa-infinite#GA=PR___AAdvantage_Visa_Infinite_12_LP",
             "foreign_fee": true,
@@ -36414,12 +36483,12 @@ data = {
             }
         }
     ],
-    "UConn Visa\u00ae Signature Bonus Rewards PLUS Card": [
+    "UConn Visa Signature Bonus Rewards PLUS Card": [
         61,
         {
             "_id": "5e690b260b077d5830cae37b",
-            "title": "UConn Visa\u00ae Signature Bonus Rewards PLUS Card",
-            "original_title": "UConn Visa\u00ae Signature Bonus Rewards PLUS Card",
+            "title": "UConn Visa Signature Bonus Rewards PLUS Card",
+            "original_title": "UConn Visa Signature Bonus Rewards PLUS Card",
             "fee": 50,
             "url": "",
             "foreign_fee": true,
@@ -36556,12 +36625,12 @@ data = {
             }
         }
     ],
-    "Barclaycard\u00ae Ring MasterCard\u00ae": [
+    "Barclaycard Ring MasterCard": [
         61,
         {
             "_id": "5e690b260b077d5830cadb0d",
-            "title": "Barclaycard\u00ae Ring MasterCard\u00ae",
-            "original_title": "Barclaycard\u00ae Ring MasterCard\u00ae",
+            "title": "Barclaycard Ring MasterCard",
+            "original_title": "Barclaycard Ring MasterCard",
             "fee": 0,
             "url": "http://www.barclaycardring.com/",
             "foreign_fee": true,
@@ -36710,12 +36779,12 @@ data = {
             }
         }
     ],
-    "Merrill Accolades\u00ae American Express\u00ae Card": [
+    "Merrill Accolades American Express Card": [
         62,
         {
             "_id": "5e690b260b077d5830cadf1e",
-            "title": "Merrill Accolades\u00ae American Express\u00ae Card",
-            "original_title": "Merrill Accolades\u00ae American Express\u00ae Card",
+            "title": "Merrill Accolades American Express Card",
+            "original_title": "Merrill Accolades American Express Card",
             "nickname": "AMEX",
             "fee": 295,
             "url": "",
@@ -36750,7 +36819,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadbe2",
             "title": "Capital One Spark Miles Select for Business",
-            "original_title": "Capital One\u00ae Spark\u00ae Miles Select for Business",
+            "original_title": "Capital One Spark Miles Select for Business",
             "fee": 0,
             "url": "https://www.capitalone.com/credit-cards/business/spark-miles-select/",
             "foreign_fee": false,
@@ -36760,10 +36829,10 @@ data = {
                     "title": "Earn unlimited 1.5X miles on every purchase for your business."
                 },
                 {
-                    "title": "Earn a one-time bonus of 20,000 miles\u2014equal to $200 in travel\u2014once you spend $3,000 on purchases within the first 3 months."
+                    "title": "Earn a one-time bonus of 20,000 milesequal to $200 in travelonce you spend $3,000 on purchases within the first 3 months."
                 },
                 {
-                    "title": "Earn 5X miles on hotel and rental car bookings through Capital One Travel\u2120 using a Spark Miles Select card"
+                    "title": "Earn 5X miles on hotel and rental car bookings through Capital One Travel using a Spark Miles Select card"
                 },
                 {
                     "title": "$0 annual fee."
@@ -36775,12 +36844,12 @@ data = {
             "earnings": [
                 {
                     "points": 5,
-                    "description": "Earn 5X miles on hotel and rental car bookings through Capital One Travel\u2120 using a Spark Miles Select card",
+                    "description": "Earn 5X miles on hotel and rental car bookings through Capital One Travel using a Spark Miles Select card",
                     "category": 3
                 },
                 {
                     "points": 5,
-                    "description": "Earn 5X miles on hotel and rental car bookings through Capital One Travel\u2120 using a Spark Miles Select card",
+                    "description": "Earn 5X miles on hotel and rental car bookings through Capital One Travel using a Spark Miles Select card",
                     "category": 10
                 },
                 {
@@ -36898,10 +36967,10 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "5% Back in Rewards for every $1 spent at Bed Bath & Beyond\u00ae, buybuy BABY\u00ae, Christmas Tree Shops and THAT!, and Harmon Face Values\u00ae using your Bed Bath & Beyond\u00ae Credit Card."
+                    "title": "5% Back in Rewards for every $1 spent at Bed Bath & Beyond, buybuy BABY, Christmas Tree Shops and THAT!, and Harmon Face Values using your Bed Bath & Beyond Credit Card."
                 },
                 {
-                    "title": "2% Back in Rewards for every $1 spent on Gas & Groceries using your Bed Bath & Beyond\u00ae Mastercard Credit Card"
+                    "title": "2% Back in Rewards for every $1 spent on Gas & Groceries using your Bed Bath & Beyond Mastercard Credit Card"
                 },
                 {
                     "title": "1% Back in Rewards for every $1 spent anywhere else Mastercard is accepted"
@@ -36910,12 +36979,12 @@ data = {
             "earnings": [
                 {
                     "points": 2,
-                    "description": "2% Back in Rewards for every $1 spent on Gas & Groceries using your Bed Bath & Beyond\u00ae Mastercard Credit Card",
+                    "description": "2% Back in Rewards for every $1 spent on Gas & Groceries using your Bed Bath & Beyond Mastercard Credit Card",
                     "category": 8
                 },
                 {
                     "points": 2,
-                    "description": "2% Back in Rewards for every $1 spent on Gas & Groceries using your Bed Bath & Beyond\u00ae Mastercard Credit Card",
+                    "description": "2% Back in Rewards for every $1 spent on Gas & Groceries using your Bed Bath & Beyond Mastercard Credit Card",
                     "category": 16
                 },
                 {
@@ -37028,7 +37097,7 @@ data = {
                     "title": "Unlimited 1.5% Cash Rewards. No category limitations or quarterly activations."
                 },
                 {
-                    "title": "1.8% Cash Rewards on Google Pay\u2122 or Apple Pay\u00aetrademark mobile wallet purchases during the first 12 months from account opening."
+                    "title": "1.8% Cash Rewards on Google Pay or Apple Paytrademark mobile wallet purchases during the first 12 months from account opening."
                 },
                 {
                     "title": "0% Intro APR on purchases and balance transfers for 12 months. After that your variable APR will be 16.24% to 28.24%. Balance transfers made within 120 days qualify for the intro rate and fee."
@@ -37120,7 +37189,7 @@ data = {
                     "title": "Get $10 off registration for the Hitting 4 the Cycle Bike Ride, a 25-mile trek starting at Miller Park. Use promo code AB19 at checkout."
                 },
                 {
-                    "title": "Exclusive Entrance: Avoid the lines\u2014get into Miller Park faster when you show your Brewers card or checks at the Associated Bank Check In Gate."
+                    "title": "Exclusive Entrance: Avoid the linesget into Miller Park faster when you show your Brewers card or checks at the Associated Bank Check In Gate."
                 },
                 {
                     "title": "Be the first to get pre-sale access to designated Miller Park concerts and events"
@@ -37160,12 +37229,12 @@ data = {
             }
         }
     ],
-    "SIU Rewards Visa\u00ae Credit Card": [
+    "SIU Rewards Visa Credit Card": [
         63,
         {
             "_id": "5e690b260b077d5830cae292",
-            "title": "SIU Rewards Visa\u00ae Credit Card",
-            "original_title": "SIU Rewards Visa\u00ae Credit Card",
+            "title": "SIU Rewards Visa Credit Card",
+            "original_title": "SIU Rewards Visa Credit Card",
             "fee": 0,
             "url": "http://www.commercebank.com/affinity-agent-cards/saluki",
             "foreign_fee": true,
@@ -37240,7 +37309,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 25\u00a2 per purchase when you make 10 qualifying Green$ense credit card transactions that post to your account each month (up to $20 monthly)."
+                    "title": "Earn 25 per purchase when you make 10 qualifying Green$ense credit card transactions that post to your account each month (up to $20 monthly)."
                 }
             ],
             "earnings": [],
@@ -37348,7 +37417,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "A portion of every dollar you spend with the Hutch Card\u00ae is returned directly to fund improvements for Hutchinson parks and/or The Hutchinson Zoo."
+                    "title": "A portion of every dollar you spend with the Hutch Card is returned directly to fund improvements for Hutchinson parks and/or The Hutchinson Zoo."
                 }
             ],
             "earnings": [],
@@ -37508,12 +37577,12 @@ data = {
             }
         }
     ],
-    "UMB Visa\u00ae Commercial Card": [
+    "UMB Visa Commercial Card": [
         64,
         {
             "_id": "5e690b260b077d5830cae387",
-            "title": "UMB Visa\u00ae Commercial Card",
-            "original_title": "UMB Visa\u00ae Commercial Card",
+            "title": "UMB Visa Commercial Card",
+            "original_title": "UMB Visa Commercial Card",
             "fee": 0,
             "url": "https://www.umb.com/Commercial/BankingSolutions/CommercialCards/Q023801",
             "foreign_fee": true,
@@ -37576,12 +37645,12 @@ data = {
             }
         }
     ],
-    "Chase Slate\u00ae (Mastercard)": [
+    "Chase Slate (Mastercard)": [
         64,
         {
             "_id": "5e690b260b077d5830cadc30",
-            "title": "Chase Slate\u00ae (Mastercard)",
-            "original_title": "Chase Slate\u00ae (Mastercard)",
+            "title": "Chase Slate (Mastercard)",
+            "original_title": "Chase Slate (Mastercard)",
             "fee": 0,
             "url": "https://creditcards.chase.com/slate-credit-card/learnmore-apply?S81H=Y71UH0",
             "foreign_fee": true,
@@ -38190,12 +38259,12 @@ data = {
             }
         }
     ],
-    "Navy Federal More Rewards American Express\u00ae Credit Card": [
+    "Navy Federal More Rewards American Express Credit Card": [
         65,
         {
             "_id": "5e690b260b077d5830cadf52",
-            "title": "Navy Federal More Rewards American Express\u00ae Credit Card",
-            "original_title": "Navy Federal More Rewards American Express\u00ae Credit Card",
+            "title": "Navy Federal More Rewards American Express Credit Card",
+            "original_title": "Navy Federal More Rewards American Express Credit Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.navyfederal.org/loans-cards/credit-cards/more-rewards/",
@@ -38365,12 +38434,12 @@ data = {
             }
         }
     ],
-    "U.S. Bank Business Platinum Visa\u00ae Card": [
+    "U.S. Bank Business Platinum Visa Card": [
         65,
         {
             "_id": "5e690b260b077d5830cae35f",
-            "title": "U.S. Bank Business Platinum Visa\u00ae Card",
-            "original_title": "U.S. Bank Business Platinum Visa\u00ae Card",
+            "title": "U.S. Bank Business Platinum Visa Card",
+            "original_title": "U.S. Bank Business Platinum Visa Card",
             "fee": 0,
             "url": "https://www.usbank.com/splash/credit-cards/business-platinum/79325.html?PID=1469133&referral=commissionjunction",
             "foreign_fee": true,
@@ -38476,12 +38545,12 @@ data = {
             }
         }
     ],
-    "PenFed Platinum Cash Rewards Visa\u00ae Card": [
+    "PenFed Platinum Cash Rewards Visa Card": [
         66,
         {
             "_id": "5e690b260b077d5830cadfbd",
-            "title": "PenFed Platinum Cash Rewards Visa\u00ae Card",
-            "original_title": "PenFed Platinum Cash Rewards Visa\u00ae Card",
+            "title": "PenFed Platinum Cash Rewards Visa Card",
+            "original_title": "PenFed Platinum Cash Rewards Visa Card",
             "fee": 25,
             "url": "https://www.penfed.org/Platinum-Cash-Rewards/",
             "foreign_fee": true,
@@ -38547,12 +38616,12 @@ data = {
             }
         }
     ],
-    "Amtrak Guest Rewards\u00ae World MasterCard\u00ae": [
+    "Amtrak Guest Rewards World MasterCard": [
         66,
         {
             "_id": "5e690b260b077d5830cadab6",
-            "title": "Amtrak Guest Rewards\u00ae World MasterCard\u00ae",
-            "original_title": "Amtrak Guest Rewards\u00ae World MasterCard\u00ae",
+            "title": "Amtrak Guest Rewards World MasterCard",
+            "original_title": "Amtrak Guest Rewards World MasterCard",
             "fee": 79,
             "url": "https://www.amtrak.com/apply",
             "foreign_fee": false,
@@ -38647,12 +38716,12 @@ data = {
             }
         }
     ],
-    "WellsOne\u00ae Commercial Card": [
+    "WellsOne Commercial Card": [
         66,
         {
             "_id": "5e690b260b077d5830cae546",
-            "title": "WellsOne\u00ae Commercial Card",
-            "original_title": "WellsOne\u00ae Commercial Card",
+            "title": "WellsOne Commercial Card",
+            "original_title": "WellsOne Commercial Card",
             "fee": 0,
             "url": "https://www.wellsfargo.com/com/treasury-management/payables/commercial-card",
             "foreign_fee": true,
@@ -38681,12 +38750,12 @@ data = {
             }
         }
     ],
-    "Cathay Bank Platinum Edition\u00ae Visa": [
+    "Cathay Bank Platinum Edition Visa": [
         66,
         {
             "_id": "5e690b260b077d5830cadc12",
-            "title": "Cathay Bank Platinum Edition\u00ae Visa",
-            "original_title": "Cathay Bank Platinum Edition\u00ae Visa",
+            "title": "Cathay Bank Platinum Edition Visa",
+            "original_title": "Cathay Bank Platinum Edition Visa",
             "fee": 0,
             "url": "https://www.firstbankcard.com/common/dynamicapp/web/cathay/learnmore_visaplat.html",
             "foreign_fee": true,
@@ -39021,12 +39090,12 @@ data = {
             }
         }
     ],
-    "Disney Rewards\u00ae Visa\u00ae Card": [
+    "Disney Rewards Visa Card": [
         67,
         {
             "_id": "5e690b260b077d5830cadd72",
-            "title": "Disney Rewards\u00ae Visa\u00ae Card",
-            "original_title": "Disney Rewards\u00ae Visa\u00ae Card",
+            "title": "Disney Rewards Visa Card",
+            "original_title": "Disney Rewards Visa Card",
             "fee": 0,
             "url": "https://disneyrewards.com/",
             "foreign_fee": true,
@@ -39270,12 +39339,12 @@ data = {
             }
         }
     ],
-    "Capital One\u00ae Classic Platinum Credit Card (Cash Back)": [
+    "Capital One Classic Platinum Credit Card (Cash Back)": [
         67,
         {
             "_id": "5e690b260b077d5830cadbd6",
-            "title": "Capital One\u00ae Classic Platinum Credit Card (Cash Back)",
-            "original_title": "Capital One\u00ae Classic Platinum Credit Card (Cash Back)",
+            "title": "Capital One Classic Platinum Credit Card (Cash Back)",
+            "original_title": "Capital One Classic Platinum Credit Card (Cash Back)",
             "fee": 39,
             "url": "http://www.capitalone.com/credit-cards/classic-platinum/",
             "foreign_fee": true,
@@ -39316,7 +39385,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 1 Membership Rewards\u00ae point for each dollar you spend on eligible purchases."
+                    "title": "Earn 1 Membership Rewards point for each dollar you spend on eligible purchases."
                 }
             ],
             "earnings": [],
@@ -40835,12 +40904,12 @@ data = {
             }
         }
     ],
-    "Simmons First Visa\u00ae Platinum Rewards": [
+    "Simmons First Visa Platinum Rewards": [
         70,
         {
             "_id": "5e690b260b077d5830cae28f",
-            "title": "Simmons First Visa\u00ae Platinum Rewards",
-            "original_title": "Simmons First Visa\u00ae Platinum Rewards",
+            "title": "Simmons First Visa Platinum Rewards",
+            "original_title": "Simmons First Visa Platinum Rewards",
             "fee": 0,
             "url": "https://www.simmonsfirst.com/personal_banking/credit_cards/vprewards_notes.aspx",
             "foreign_fee": true,
@@ -40869,12 +40938,12 @@ data = {
             }
         }
     ],
-    "Maximum Rewards\u00ae Visa\u00ae Card": [
+    "Maximum Rewards Visa Card": [
         70,
         {
             "_id": "5e690b260b077d5830cadf00",
-            "title": "Maximum Rewards\u00ae Visa\u00ae Card",
-            "original_title": "Maximum Rewards\u00ae Visa\u00ae Card",
+            "title": "Maximum Rewards Visa Card",
+            "original_title": "Maximum Rewards Visa Card",
             "fee": 0,
             "url": "https://www.firstnational.com/site/personal/credit-card/visa/visa-maxrewards.fhtml",
             "foreign_fee": true,
@@ -41119,12 +41188,12 @@ data = {
             }
         }
     ],
-    "Business Edge\u2122 Select Rewards Card": [
+    "Business Edge Select Rewards Card": [
         71,
         {
             "_id": "5e690b260b077d5830cadb9d",
-            "title": "Business Edge\u2122 Select Rewards Card",
-            "original_title": "Business Edge\u2122 Select Rewards Card",
+            "title": "Business Edge Select Rewards Card",
+            "original_title": "Business Edge Select Rewards Card",
             "fee": 0,
             "url": "https://www.usbank.com/small-business/credit-cards/business-edge-select-rewards.html",
             "foreign_fee": true,
@@ -41156,12 +41225,12 @@ data = {
             }
         }
     ],
-    "Centurion\u00ae Business Card from American Express": [
+    "Centurion Business Card from American Express": [
         71,
         {
             "_id": "5e690b260b077d5830cadc1b",
-            "title": "Centurion\u00ae Business Card from American Express",
-            "original_title": "Centurion\u00ae Business Card from American Express",
+            "title": "Centurion Business Card from American Express",
+            "original_title": "Centurion Business Card from American Express",
             "nickname": "AMEX",
             "fee": 9,
             "url": "https://web.aexp-static.com/us/content/pdf/cardmember-agreements/business-centurion/BusinessCenturion.pdf",
@@ -41169,10 +41238,10 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 3 Membership Rewards\u00ae points for each dollar of eligible purchases made when you book on the American Express Travel website."
+                    "title": "Earn 3 Membership Rewards points for each dollar of eligible purchases made when you book on the American Express Travel website."
                 },
                 {
-                    "title": "Earn 1 Membership Rewards\u00ae point for each dollar you spend on eligible purchases."
+                    "title": "Earn 1 Membership Rewards point for each dollar you spend on eligible purchases."
                 }
             ],
             "earnings": [],
@@ -41286,7 +41355,7 @@ data = {
                     "title": "2% back Walmart stores, Walmart & Murphy USA Fuel Stations, Restaurants & travel"
                 },
                 {
-                    "title": "1% back Everywhere else Mastercard\u00ae is accepted"
+                    "title": "1% back Everywhere else Mastercard is accepted"
                 }
             ],
             "earnings": [
@@ -41312,7 +41381,7 @@ data = {
                 },
                 {
                     "points": 1,
-                    "description": "1% back Everywhere else Mastercard\u00ae is accepted",
+                    "description": "1% back Everywhere else Mastercard is accepted",
                     "category": 7
                 }
             ],
@@ -41333,12 +41402,12 @@ data = {
             }
         }
     ],
-    "Discover it\u00ae for Students": [
+    "Discover it for Students": [
         71,
         {
             "_id": "5e690b260b077d5830cadd69",
-            "title": "Discover it\u00ae for Students",
-            "original_title": "Discover it\u00ae for Students",
+            "title": "Discover it for Students",
+            "original_title": "Discover it for Students",
             "fee": 0,
             "url": "https://www.discover.com/credit-cards/student/discoverit.html",
             "foreign_fee": false,
@@ -41600,12 +41669,12 @@ data = {
             }
         }
     ],
-    "Rakuten Cash Back Visa\u00ae (ex Ebates)": [
+    "Rakuten Cash Back Visa (ex Ebates)": [
         72,
         {
             "_id": "5e690b260b077d5830cae1b5",
-            "title": "Rakuten Cash Back Visa\u00ae (ex Ebates)",
-            "original_title": "Rakuten Cash Back Visa\u00ae (ex Ebates)",
+            "title": "Rakuten Cash Back Visa (ex Ebates)",
+            "original_title": "Rakuten Cash Back Visa (ex Ebates)",
             "fee": 0,
             "url": "https://www.rakuten.com/credit-card.htm",
             "foreign_fee": true,
@@ -41806,12 +41875,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Black Card\u2122": [
+    "Visa Black Card": [
         72,
         {
             "_id": "5e690b260b077d5830cae4e3",
-            "title": "Visa\u00ae Black Card\u2122",
-            "original_title": "Visa\u00ae Black Card\u2122",
+            "title": "Visa Black Card",
+            "original_title": "Visa Black Card",
             "fee": 495,
             "url": "https://www.blackcard.com/",
             "foreign_fee": true,
@@ -41881,13 +41950,13 @@ data = {
             "rewards_type": 1,
             "rewards": [
                 {
-                    "title": "You\u2019ll get additional warranty protection at no charge on eligible items that are purchased with your credit card."
+                    "title": "Youll get additional warranty protection at no charge on eligible items that are purchased with your credit card."
                 },
                 {
                     "title": "You won't pay a transaction fee when making purchases outside of the United States."
                 },
                 {
-                    "title": "Rewards don\u2019t expire for the life of the account, and you can redeem cash back for any amount."
+                    "title": "Rewards dont expire for the life of the account, and you can redeem cash back for any amount."
                 },
                 {
                     "title": "Purchase an item and find a lower price within 120 days and you could be reimbursed for the price difference."
@@ -41896,7 +41965,7 @@ data = {
                     "title": "If your credit card is lost or stolen, you can get an emergency replacement card and a cash advance."
                 },
                 {
-                    "title": "Enjoy comprehensive, personalized assistance in dining, entertainment and travel\u201424 hours a day, 365 days a year."
+                    "title": "Enjoy comprehensive, personalized assistance in dining, entertainment and travel24 hours a day, 365 days a year."
                 },
                 {
                     "title": "Earn unlimited 4% cash back on dining and entertainment, 2% at grocery stores and 1% on all other purchases"
@@ -42052,19 +42121,19 @@ data = {
             }
         }
     ],
-    "FNBO ExtraEarnings\u00ae Visa\u00ae Credit Card": [
+    "FNBO ExtraEarnings Visa Credit Card": [
         73,
         {
             "_id": "5e690b260b077d5830caddd1",
-            "title": "FNBO ExtraEarnings\u00ae Visa\u00ae Credit Card",
-            "original_title": "FNBO ExtraEarnings\u00ae Visa\u00ae Credit Card",
+            "title": "FNBO ExtraEarnings Visa Credit Card",
+            "original_title": "FNBO ExtraEarnings Visa Credit Card",
             "fee": 0,
             "url": "https://www.fnbodirect.com/extra-earnings-visa/",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "You must have a currently open FNBO Direct Online Savings Account or Checking Account in order to qualify for the FNBO Direct ExtraEarnings\u00ae Visa\u00ae Credit Card."
+                    "title": "You must have a currently open FNBO Direct Online Savings Account or Checking Account in order to qualify for the FNBO Direct ExtraEarnings Visa Credit Card."
                 },
                 {
                     "title": "Redeem your points by requesting a $25 deposit into your FNBO Direct Online Savings Account or Checking Account each time you accrue 2,500 points on your account"
@@ -42420,12 +42489,12 @@ data = {
             }
         }
     ],
-    "The US Airways\u00ae Premier World MasterCard\u00ae": [
+    "The US Airways Premier World MasterCard": [
         73,
         {
             "_id": "5e690b260b077d5830cae33e",
-            "title": "The US Airways\u00ae Premier World MasterCard\u00ae",
-            "original_title": "The US Airways\u00ae Premier World MasterCard\u00ae",
+            "title": "The US Airways Premier World MasterCard",
+            "original_title": "The US Airways Premier World MasterCard",
             "fee": 89,
             "url": "CARD NO LONGER OFFERED/AVAILABLE",
             "foreign_fee": true,
@@ -42457,12 +42526,12 @@ data = {
             }
         }
     ],
-    "TCF Bank Visa\u00ae Business Card": [
+    "TCF Bank Visa Business Card": [
         73,
         {
             "_id": "5e690b260b077d5830cae308",
-            "title": "TCF Bank Visa\u00ae Business Card",
-            "original_title": "TCF Bank Visa\u00ae Business Card",
+            "title": "TCF Bank Visa Business Card",
+            "original_title": "TCF Bank Visa Business Card",
             "fee": 0,
             "url": "https://online1.elancard.com/oad/catalog/learnMore.controller?productId=80",
             "foreign_fee": true,
@@ -42491,12 +42560,12 @@ data = {
             }
         }
     ],
-    "Visa Signature\u00ae Bonus Rewards Plus": [
+    "Visa Signature Bonus Rewards Plus": [
         74,
         {
             "_id": "5e690b260b077d5830cae4d2",
-            "title": "Visa Signature\u00ae Bonus Rewards Plus",
-            "original_title": "Visa Signature\u00ae Bonus Rewards Plus",
+            "title": "Visa Signature Bonus Rewards Plus",
+            "original_title": "Visa Signature Bonus Rewards Plus",
             "fee": 50,
             "url": "https://online1.elancard.com/oad/apply/begin?productId=03",
             "foreign_fee": true,
@@ -42525,12 +42594,12 @@ data = {
             }
         }
     ],
-    "Williams-Sonoma Visa\u00ae Signature Card": [
+    "Williams-Sonoma Visa Signature Card": [
         73,
         {
             "_id": "5e690b260b077d5830cae54e",
-            "title": "Williams-Sonoma Visa\u00ae Signature Card",
-            "original_title": "Williams-Sonoma Visa\u00ae Signature Card",
+            "title": "Williams-Sonoma Visa Signature Card",
+            "original_title": "Williams-Sonoma Visa Signature Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -42771,12 +42840,12 @@ data = {
             }
         }
     ],
-    "Travel Rewards American Express\u00ae Card": [
+    "Travel Rewards American Express Card": [
         132,
         {
             "_id": "5e690b260b077d5830cae354",
-            "title": "Travel Rewards American Express\u00ae Card",
-            "original_title": "Travel Rewards American Express\u00ae Card",
+            "title": "Travel Rewards American Express Card",
+            "original_title": "Travel Rewards American Express Card",
             "nickname": "AMEX",
             "fee": 95,
             "url": "",
@@ -42986,19 +43055,19 @@ data = {
             }
         }
     ],
-    "Citi\u00ae / AAdvantage\u00ae Gold MasterCard\u00ae": [
+    "Citi / AAdvantage Gold MasterCard": [
         74,
         {
             "_id": "5e690b260b077d5830cadc6b",
-            "title": "Citi\u00ae / AAdvantage\u00ae Gold MasterCard\u00ae",
-            "original_title": "Citi\u00ae / AAdvantage\u00ae Gold MasterCard\u00ae",
+            "title": "Citi / AAdvantage Gold MasterCard",
+            "original_title": "Citi / AAdvantage Gold MasterCard",
             "fee": 50,
             "url": "https://www.citi.com/credit-cards/credit-card-details/detail.do?ID=citi-aadvantage-gold-credit-card&category=american-airlines-aadvantage-credit-cards&afc=157",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 1 AAdvantage\u00ae mile for every dollar spent on purchases."
+                    "title": "Earn 1 AAdvantage mile for every dollar spent on purchases."
                 }
             ],
             "earnings": [],
@@ -43020,12 +43089,12 @@ data = {
             }
         }
     ],
-    "USAA Rewards\u2122 World MasterCard\u00ae": [
+    "USAA Rewards World MasterCard": [
         74,
         {
             "_id": "5e690b260b077d5830cae3d0",
-            "title": "USAA Rewards\u2122 World MasterCard\u00ae",
-            "original_title": "USAA Rewards\u2122 World MasterCard\u00ae",
+            "title": "USAA Rewards World MasterCard",
+            "original_title": "USAA Rewards World MasterCard",
             "fee": 0,
             "url": "https://www.usaa.com/inet/pages/banking_credit_cards_world_mastercard",
             "foreign_fee": true,
@@ -43122,12 +43191,12 @@ data = {
             }
         }
     ],
-    "UMass-Lowell Visa\u00ae Signature": [
+    "UMass-Lowell Visa Signature": [
         75,
         {
             "_id": "5e690b260b077d5830cae382",
-            "title": "UMass-Lowell Visa\u00ae Signature",
-            "original_title": "UMass-Lowell Visa\u00ae Signature",
+            "title": "UMass-Lowell Visa Signature",
+            "original_title": "UMass-Lowell Visa Signature",
             "fee": 0,
             "url": "https://applications.usbank.com/oad/begin?locationCode=9492&productId=05",
             "foreign_fee": true,
@@ -43161,7 +43230,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadc63",
             "title": "Citi Simplicity Card",
-            "original_title": "Citi Simplicity\u00ae Card",
+            "original_title": "Citi Simplicity Card",
             "fee": 0,
             "url": "https://www.citi.com/credit-cards/credit-card-details/detail.do?ID=citi-simplicity-credit-card",
             "foreign_fee": true,
@@ -43208,10 +43277,10 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 5% discount on all purchases made with your card at Cach\u00e9 or at cache.com."
+                    "title": "Earn 5% discount on all purchases made with your card at Cach or at cache.com."
                 },
                 {
-                    "title": "Earn 5 points for every $1 you spend when you shop at Cach\u00e9 and Cache.com."
+                    "title": "Earn 5 points for every $1 you spend when you shop at Cach and Cache.com."
                 },
                 {
                     "title": "Earn 1 point for every $1 you spend."
@@ -43353,12 +43422,12 @@ data = {
             }
         }
     ],
-    "SavingStar American Express\u00ae": [
+    "SavingStar American Express": [
         75,
         {
             "_id": "5e690b260b077d5830cae201",
-            "title": "SavingStar American Express\u00ae",
-            "original_title": "SavingStar American Express\u00ae",
+            "title": "SavingStar American Express",
+            "original_title": "SavingStar American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://savingstar.com/credit_card",
@@ -43406,7 +43475,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 1 ScoreCard\u00ae reward per dollar spent."
+                    "title": "Earn 1 ScoreCard reward per dollar spent."
                 }
             ],
             "earnings": [],
@@ -43667,12 +43736,12 @@ data = {
             }
         }
     ],
-    "Select Rewards Visa\u00ae Platinum": [
+    "Select Rewards Visa Platinum": [
         76,
         {
             "_id": "5e690b260b077d5830cae271",
-            "title": "Select Rewards Visa\u00ae Platinum",
-            "original_title": "Select Rewards Visa\u00ae Platinum",
+            "title": "Select Rewards Visa Platinum",
+            "original_title": "Select Rewards Visa Platinum",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -43885,12 +43954,12 @@ data = {
             }
         }
     ],
-    "WorldPoints\u00ae Rewards for Business\u2122 Visa\u00ae Card": [
+    "WorldPoints Rewards for Business Visa Card": [
         76,
         {
             "_id": "5e690b260b077d5830cae55e",
-            "title": "WorldPoints\u00ae Rewards for Business\u2122 Visa\u00ae Card",
-            "original_title": "WorldPoints\u00ae Rewards for Business\u2122 Visa\u00ae Card",
+            "title": "WorldPoints Rewards for Business Visa Card",
+            "original_title": "WorldPoints Rewards for Business Visa Card",
             "fee": 0,
             "url": "https://business.bankofamerica.com/creditcard/products/worldpoints-rewards-business-credit-card",
             "foreign_fee": true,
@@ -44220,7 +44289,7 @@ data = {
                     "title": "You get 1% cash back for each dollar spent on everyday purchases, 2% back on groceries, 3% back on gas and a whopping 5% cash back in a category of your choice."
                 },
                 {
-                    "title": "There\u2019s no application fee, no annual fees, no-fee cash advances and no balance transfer fees. Points can be redeemed at any time to use towards cash back, merchandise, travel, and more."
+                    "title": "Theres no application fee, no annual fees, no-fee cash advances and no balance transfer fees. Points can be redeemed at any time to use towards cash back, merchandise, travel, and more."
                 }
             ],
             "earnings": [
@@ -44476,7 +44545,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadc74",
             "title": "Citi Double Cash Card",
-            "original_title": "Citi\u00ae Double Cash Card",
+            "original_title": "Citi Double Cash Card",
             "fee": 0,
             "url": "https://www.citi.com/credit-cards/credit-card-details/citi.action?ID=citi-double-cash-credit-card",
             "foreign_fee": true,
@@ -44548,19 +44617,19 @@ data = {
             }
         }
     ],
-    "Netspend\u00ae Small Business Prepaid Mastercard\u00ae": [
+    "Netspend Small Business Prepaid Mastercard": [
         78,
         {
             "_id": "5e690b260b077d5830cadf5c",
-            "title": "Netspend\u00ae Small Business Prepaid Mastercard\u00ae",
-            "original_title": "Netspend\u00ae Small Business Prepaid Mastercard\u00ae",
+            "title": "Netspend Small Business Prepaid Mastercard",
+            "original_title": "Netspend Small Business Prepaid Mastercard",
             "fee": 0,
             "url": "",
             "foreign_fee": false,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Subject to card activation and ID verification. Terms and Costs Apply. Issued by MetaBank\u00ae, Member FDIC. Click for full details."
+                    "title": "Subject to card activation and ID verification. Terms and Costs Apply. Issued by MetaBank, Member FDIC. Click for full details."
                 },
                 {
                     "title": "Simplify tax preparation with business expense tracking and transaction exporting."
@@ -44569,7 +44638,7 @@ data = {
                     "title": "Separate Business Expenses from Personal Expenses. No more mixing business purchases into everyday life."
                 },
                 {
-                    "title": "See additional\u00a0Netspend\u00ae\u00a0Small Business Prepaid Mastercard details"
+                    "title": "See additionalNetspendSmall Business Prepaid Mastercard details"
                 },
                 {
                     "title": "No late fees or interest charges because this is not a credit card."
@@ -44581,7 +44650,7 @@ data = {
                     "title": "Manage employee spending with more control."
                 },
                 {
-                    "title": "Accept credit card payments with the ProPay\u00ae mobile card reader."
+                    "title": "Accept credit card payments with the ProPay mobile card reader."
                 }
             ],
             "earnings": [
@@ -44794,7 +44863,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 1 point for every $1 spent everywhere, every time \u2013 just for getting the things you need for your business."
+                    "title": "Earn 1 point for every $1 spent everywhere, every time  just for getting the things you need for your business."
                 }
             ],
             "earnings": [],
@@ -45097,7 +45166,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cade21",
             "title": "Delta SkyMiles Gold Business American Express Card",
-            "original_title": "Gold Delta SkyMiles\u00ae Business Credit Card from American Express",
+            "original_title": "Gold Delta SkyMiles Business Credit Card from American Express",
             "nickname": "AMEX",
             "fee": 99,
             "url": "https://www.americanexpress.com/en-us/business/credit-cards/delta-skymiles-gold",
@@ -45210,12 +45279,12 @@ data = {
             }
         }
     ],
-    "The Secured Visa\u00ae from Merrick Bank": [
+    "The Secured Visa from Merrick Bank": [
         79,
         {
             "_id": "5e690b260b077d5830cae337",
-            "title": "The Secured Visa\u00ae from Merrick Bank",
-            "original_title": "The Secured Visa\u00ae from Merrick Bank",
+            "title": "The Secured Visa from Merrick Bank",
+            "original_title": "The Secured Visa from Merrick Bank",
             "fee": 36,
             "url": "https://securedcard.merrickbank.com/",
             "foreign_fee": true,
@@ -45637,10 +45706,10 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "On non-fuel purchases at their stations, it\u2019s a 3% rebate."
+                    "title": "On non-fuel purchases at their stations, its a 3% rebate."
                 },
                 {
-                    "title": "On fuel purchases at Chevron/Texaco stations, it\u2019s 10 cents per gallon."
+                    "title": "On fuel purchases at Chevron/Texaco stations, its 10 cents per gallon."
                 },
                 {
                     "title": "Earn 1% rebate on all purchases."
@@ -45771,12 +45840,12 @@ data = {
             }
         }
     ],
-    "Discover it\u00ae chrome for Students": [
+    "Discover it chrome for Students": [
         80,
         {
             "_id": "5e690b260b077d5830cadd67",
-            "title": "Discover it\u00ae chrome for Students",
-            "original_title": "Discover it\u00ae chrome for Students",
+            "title": "Discover it chrome for Students",
+            "original_title": "Discover it chrome for Students",
             "fee": 0,
             "url": "https://www.discover.com/credit-cards/student/",
             "foreign_fee": false,
@@ -45984,12 +46053,12 @@ data = {
             }
         }
     ],
-    "BMO Harris Bank Select World MasterCard\u00ae": [
+    "BMO Harris Bank Select World MasterCard": [
         80,
         {
             "_id": "5e690b260b077d5830cadb44",
-            "title": "BMO Harris Bank Select World MasterCard\u00ae",
-            "original_title": "BMO Harris Bank Select World MasterCard\u00ae",
+            "title": "BMO Harris Bank Select World MasterCard",
+            "original_title": "BMO Harris Bank Select World MasterCard",
             "fee": 75,
             "url": "https://www.bmoharris.com/us/personal-finance/credit-cards/select-world-credit-card#page=page-1",
             "foreign_fee": true,
@@ -46334,12 +46403,12 @@ data = {
             }
         }
     ],
-    "Preferred Cash Rewards World MasterCard\u00ae with Chip Technology": [
+    "Preferred Cash Rewards World MasterCard with Chip Technology": [
         81,
         {
             "_id": "5e690b260b077d5830cae186",
-            "title": "Preferred Cash Rewards World MasterCard\u00ae with Chip Technology",
-            "original_title": "Preferred Cash Rewards World MasterCard\u00ae with Chip Technology",
+            "title": "Preferred Cash Rewards World MasterCard with Chip Technology",
+            "original_title": "Preferred Cash Rewards World MasterCard with Chip Technology",
             "fee": 0,
             "url": "https://www.usaa.com/inet/pages/banking_credit_cards_world_mastercard?akredirect=true",
             "foreign_fee": true,
@@ -46373,7 +46442,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadd45",
             "title": "Delta SkyMiles Platinum American Express Card",
-            "original_title": "Delta SkyMiles\u00ae Platinum American Express Card",
+            "original_title": "Delta SkyMiles Platinum American Express Card",
             "nickname": "AMEX",
             "fee": 250,
             "url": "https://creditcard.delta.com/d/delta-platinum-credit-card/?utm_mcid=3569277&utm_source=google&utm_medium=cpc&utm_term=%2Bplatinum%20%2Bskymile&utm_cmpid=1049400461&utm_adgid=54354368314&utm_tgtid=kwd-392645166858&utm_mt=b&utm_adid=414520178574&utm_dvc=c&utm_ntwk=g&utm_adpos=&utm_plcmnt=&utm_locphysid=9011917&utm_locintid=&utm_feeditemid=&utm_devicemdl=&utm_plcmnttgt=&utm_programname=ccdc&gclid=EAIaIQobChMI34zmntLC5wIVEj0MCh23EwDuEAAYASAAEgK2nfD_BwE",
@@ -46399,7 +46468,7 @@ data = {
                     "title": "2 Miles per dollar spent on purchases at U.S. supermarkets."
                 },
                 {
-                    "title": "10,000 Medallion\u00ae Qualification Miles with $25,000 and $50,000 spend."
+                    "title": "10,000 Medallion Qualification Miles with $25,000 and $50,000 spend."
                 },
                 {
                     "title": "1 Mile for every eligible dollar you spend on other purchases."
@@ -46749,12 +46818,12 @@ data = {
             }
         }
     ],
-    "Capital One\u00ae Platinum Prestige Credit Card": [
+    "Capital One Platinum Prestige Credit Card": [
         120,
         {
             "_id": "5e690b260b077d5830cadbda",
-            "title": "Capital One\u00ae Platinum Prestige Credit Card",
-            "original_title": "Capital One\u00ae Platinum Prestige Credit Card",
+            "title": "Capital One Platinum Prestige Credit Card",
+            "original_title": "Capital One Platinum Prestige Credit Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -46963,7 +47032,7 @@ data = {
                     "title": "Earn 2% back on eating out and other gas purchases."
                 },
                 {
-                    "title": "Earn 10\u00a2 off/ gallon at BJ's Gas\u00ae every day."
+                    "title": "Earn 10 off/ gallon at BJ's Gas every day."
                 },
                 {
                     "title": "Earn 1% back on other non-BJ's purchases everywhere else MasterCard is accepted."
@@ -47793,12 +47862,12 @@ data = {
             }
         }
     ],
-    "Merrill Rewards for Business\u2122 Visa Signature\u00ae Card": [
+    "Merrill Rewards for Business Visa Signature Card": [
         84,
         {
             "_id": "5e690b260b077d5830cadf21",
-            "title": "Merrill Rewards for Business\u2122 Visa Signature\u00ae Card",
-            "original_title": "Merrill Rewards for Business\u2122 Visa Signature\u00ae Card",
+            "title": "Merrill Rewards for Business Visa Signature Card",
+            "original_title": "Merrill Rewards for Business Visa Signature Card",
             "fee": 0,
             "url": "https://www.rewards.ml.com/RWDapp/ns/home?mc=ml",
             "foreign_fee": true,
@@ -47827,12 +47896,12 @@ data = {
             }
         }
     ],
-    "Capital One\u00ae Platinum Credit Card (Cashback)": [
+    "Capital One Platinum Credit Card (Cashback)": [
         84,
         {
             "_id": "5e690b260b077d5830cadbd8",
-            "title": "Capital One\u00ae Platinum Credit Card (Cashback)",
-            "original_title": "Capital One\u00ae Platinum Credit Card (Cashback)",
+            "title": "Capital One Platinum Credit Card (Cashback)",
+            "original_title": "Capital One Platinum Credit Card (Cashback)",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -47860,12 +47929,12 @@ data = {
             }
         }
     ],
-    "NHL Discover it\u00ae": [
+    "NHL Discover it": [
         84,
         {
             "_id": "5e690b260b077d5830cadf6f",
-            "title": "NHL Discover it\u00ae",
-            "original_title": "NHL Discover it\u00ae",
+            "title": "NHL Discover it",
+            "original_title": "NHL Discover it",
             "fee": 0,
             "url": "https://www.discover.com/credit-cards/affinity/nhl.html",
             "foreign_fee": false,
@@ -48975,12 +49044,12 @@ data = {
             }
         }
     ],
-    "UNITY\u00ae Visa Secured Credit Card - The Comeback Card\u2122": [
+    "UNITY Visa Secured Credit Card - The Comeback Card": [
         87,
         {
             "_id": "5e690b260b077d5830cae39f",
-            "title": "UNITY\u00ae Visa Secured Credit Card - The Comeback Card\u2122",
-            "original_title": "UNITY\u00ae Visa Secured Credit Card - The Comeback Card\u2122",
+            "title": "UNITY Visa Secured Credit Card - The Comeback Card",
+            "original_title": "UNITY Visa Secured Credit Card - The Comeback Card",
             "fee": 39,
             "url": "https://www.oneunited.com/unity-visa/",
             "foreign_fee": true,
@@ -49389,10 +49458,10 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "ScoreCard\u00ae Rewards, Points Never Expire"
+                    "title": "ScoreCard Rewards, Points Never Expire"
                 },
                 {
-                    "title": "Roadside Dispatch\u00ae, helps get you home when your car is disabled"
+                    "title": "Roadside Dispatch, helps get you home when your car is disabled"
                 },
                 {
                     "title": "No Minimum Finance Charge"
@@ -49506,12 +49575,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Platinum Rewards": [
+    "Visa Platinum Rewards": [
         88,
         {
             "_id": "5e690b260b077d5830cae526",
-            "title": "Visa\u00ae Platinum Rewards",
-            "original_title": "Visa\u00ae Platinum Rewards",
+            "title": "Visa Platinum Rewards",
+            "original_title": "Visa Platinum Rewards",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -49540,12 +49609,12 @@ data = {
             }
         }
     ],
-    "Avianca Vuela Visa\u00ae Card": [
+    "Avianca Vuela Visa Card": [
         88,
         {
             "_id": "5e690b260b077d5830cadae2",
-            "title": "Avianca Vuela Visa\u00ae Card",
-            "original_title": "Avianca Vuela Visa\u00ae Card",
+            "title": "Avianca Vuela Visa Card",
+            "original_title": "Avianca Vuela Visa Card",
             "fee": 149,
             "url": "https://www.lifemilescreditcard.com",
             "foreign_fee": false,
@@ -50059,12 +50128,12 @@ data = {
             }
         }
     ],
-    "Miles & More\u00ae World MasterCard\u00ae": [
+    "Miles & More World MasterCard": [
         89,
         {
             "_id": "5e690b260b077d5830cadf2b",
-            "title": "Miles & More\u00ae World MasterCard\u00ae",
-            "original_title": "Miles & More\u00ae World MasterCard\u00ae",
+            "title": "Miles & More World MasterCard",
+            "original_title": "Miles & More World MasterCard",
             "nickname": "Miles and More Lufthansa",
             "fee": 59,
             "url": "https://cards.barclaycardus.com/banking/cards/lufthansa-miles-more-world-elite-mastercard/",
@@ -50262,12 +50331,12 @@ data = {
             }
         }
     ],
-    "The Sportsman\u2019s Guide Buyer\u2019s Club Advantage Rewards Card": [
+    "The Sportsmans Guide Buyers Club Advantage Rewards Card": [
         89,
         {
             "_id": "5e690b260b077d5830cae338",
-            "title": "The Sportsman\u2019s Guide Buyer\u2019s Club Advantage Rewards Card",
-            "original_title": "The Sportsman\u2019s Guide Buyer\u2019s Club Advantage Rewards Card",
+            "title": "The Sportsmans Guide Buyers Club Advantage Rewards Card",
+            "original_title": "The Sportsmans Guide Buyers Club Advantage Rewards Card",
             "fee": 0,
             "url": "https://d.comenity.net/sportsmansguide/",
             "foreign_fee": true,
@@ -50586,12 +50655,12 @@ data = {
             }
         }
     ],
-    "SKYPASS Visa\u00ae Signature Credit Card": [
+    "SKYPASS Visa Signature Credit Card": [
         90,
         {
             "_id": "5e690b260b077d5830cae297",
-            "title": "SKYPASS Visa\u00ae Signature Credit Card",
-            "original_title": "SKYPASS Visa\u00ae Signature Credit Card",
+            "title": "SKYPASS Visa Signature Credit Card",
+            "original_title": "SKYPASS Visa Signature Credit Card",
             "fee": 80,
             "url": "http://www.skypassvisa.com/credit/visaSignatureCard.do",
             "foreign_fee": true,
@@ -50623,12 +50692,12 @@ data = {
             }
         }
     ],
-    "U.S. Bank FlexPerks\u00ae Travel Rewards Visa Signature\u00ae card": [
+    "U.S. Bank FlexPerks Travel Rewards Visa Signature card": [
         90,
         {
             "_id": "5e690b260b077d5830cae368",
-            "title": "U.S. Bank FlexPerks\u00ae Travel Rewards Visa Signature\u00ae card",
-            "original_title": "U.S. Bank FlexPerks\u00ae Travel Rewards Visa Signature\u00ae card",
+            "title": "U.S. Bank FlexPerks Travel Rewards Visa Signature card",
+            "original_title": "U.S. Bank FlexPerks Travel Rewards Visa Signature card",
             "fee": 49,
             "url": "https://www.usbank.com/credit-cards/flexperks-travel.html",
             "foreign_fee": true,
@@ -50949,7 +51018,7 @@ data = {
             "rewards_type": 1,
             "rewards": [
                 {
-                    "title": "You\u2019ll earn 3% and 2% cash back on the first $2,500 in combined choice category/grocery store/wholesale club purchases each quarter, then earn 1%"
+                    "title": "Youll earn 3% and 2% cash back on the first $2,500 in combined choice category/grocery store/wholesale club purchases each quarter, then earn 1%"
                 },
                 {
                     "title": "Preferred Rewards clients get a 25% - 75% rewards bonus on every purchase. That means the 3% choice category could go up to 5.25% and the 2% at grocery stores and wholesale clubs could go up to 3.5%, for the first $2,500 in combined choice category/grocery store/wholesale club purchases each quarter, and the 1% for all other purchases could go up to 1.75%."
@@ -50958,13 +51027,13 @@ data = {
                     "title": "Online $150 cash rewards bonus after making at least $500 in purchases in the first 90 days of your account opening"
                 },
                 {
-                    "title": "Introductory 0%\u2020 APR for your first 12 billing cycles for purchases, and for any balance transfers made within 60 days of opening your account. After the intro APR offer ends, a Variable APR that's currently 16.24% to 26.24% will apply. A 3% fee (min $10) applies to all balance transfers."
+                    "title": "Introductory 0% APR for your first 12 billing cycles for purchases, and for any balance transfers made within 60 days of opening your account. After the intro APR offer ends, a Variable APR that's currently 16.24% to 26.24% will apply. A 3% fee (min $10) applies to all balance transfers."
                 },
                 {
                     "title": "Enjoy no annual fee while maximizing your cash back by choosing how you earn rewards"
                 },
                 {
-                    "title": "Earn cash back your way \u2013 now choose your 3% category"
+                    "title": "Earn cash back your way  now choose your 3% category"
                 },
                 {
                     "title": "3% cash back in the category of your choice: gas, online shopping, dining, travel, drug stores, or home improvement/furnishings"
@@ -51292,19 +51361,19 @@ data = {
             }
         }
     ],
-    "Cabela\u2019s CLUB Mastercard": [
+    "Cabelas CLUB Mastercard": [
         91,
         {
             "_id": "5e690b260b077d5830cadbc4",
-            "title": "Cabela\u2019s CLUB Mastercard",
-            "original_title": "Cabela\u2019s CLUB Mastercard",
+            "title": "Cabelas CLUB Mastercard",
+            "original_title": "Cabelas CLUB Mastercard",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "2 points on Cabela\u2019s and Bass Pro Shops purchases"
+                    "title": "2 points on Cabelas and Bass Pro Shops purchases"
                 },
                 {
                     "title": "2 points at participating Cenex gas stations and convenience stores"
@@ -51337,12 +51406,12 @@ data = {
             }
         }
     ],
-    "Alpha Omicron Pi Platinum Plus\u00ae MasterCard\u00ae": [
+    "Alpha Omicron Pi Platinum Plus MasterCard": [
         91,
         {
             "_id": "5e690b260b077d5830cada6a",
-            "title": "Alpha Omicron Pi Platinum Plus\u00ae MasterCard\u00ae",
-            "original_title": "Alpha Omicron Pi Platinum Plus\u00ae MasterCard\u00ae",
+            "title": "Alpha Omicron Pi Platinum Plus MasterCard",
+            "original_title": "Alpha Omicron Pi Platinum Plus MasterCard",
             "fee": 0,
             "url": "https://www.applyonlinenow.com/USCCapp/Ctl/entry?sc=VAB58L&ContentID=7443&Section=AOII_MasterCard&TPLID=32&Template=/TaggedPage/TaggedPageDisplay.cfm&mboxSession=1409786130509-853155#b",
             "foreign_fee": true,
@@ -51476,12 +51545,12 @@ data = {
             }
         }
     ],
-    "HSBC Platinum MasterCard\u00ae": [
+    "HSBC Platinum MasterCard": [
         92,
         {
             "_id": "5e690b260b077d5830cade65",
-            "title": "HSBC Platinum MasterCard\u00ae",
-            "original_title": "HSBC Platinum MasterCard\u00ae",
+            "title": "HSBC Platinum MasterCard",
+            "original_title": "HSBC Platinum MasterCard",
             "fee": 0,
             "url": "http://www.us.hsbc.com/1/2/home/personal-banking/credit-cards/platinum-mc",
             "foreign_fee": true,
@@ -51510,12 +51579,12 @@ data = {
             }
         }
     ],
-    "Barclaycard\u00ae Rewards MasterCard\u00ae": [
+    "Barclaycard Rewards MasterCard": [
         92,
         {
             "_id": "5e690b260b077d5830cadb0b",
-            "title": "Barclaycard\u00ae Rewards MasterCard\u00ae",
-            "original_title": "Barclaycard\u00ae Rewards MasterCard\u00ae",
+            "title": "Barclaycard Rewards MasterCard",
+            "original_title": "Barclaycard Rewards MasterCard",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -51637,12 +51706,12 @@ data = {
             }
         }
     ],
-    "Ace Rewards\u00ae Visa Card": [
+    "Ace Rewards Visa Card": [
         92,
         {
             "_id": "5e690b260b077d5830cada46",
-            "title": "Ace Rewards\u00ae Visa Card",
-            "original_title": "Ace Rewards\u00ae Visa Card",
+            "title": "Ace Rewards Visa Card",
+            "original_title": "Ace Rewards Visa Card",
             "fee": 0,
             "url": "http://www.acerewardsvisa.com/credit/visaCard.do",
             "foreign_fee": true,
@@ -51725,7 +51794,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 1 HawaiianMile\u00ae for every dollar spent in net retail purchases."
+                    "title": "Earn 1 HawaiianMile for every dollar spent in net retail purchases."
                 }
             ],
             "earnings": [],
@@ -51786,12 +51855,12 @@ data = {
             }
         }
     ],
-    "AeroMexico Visa\u00ae Secured Card": [
+    "AeroMexico Visa Secured Card": [
         92,
         {
             "_id": "5e690b260b077d5830cada50",
-            "title": "AeroMexico Visa\u00ae Secured Card",
-            "original_title": "AeroMexico Visa\u00ae Secured Card",
+            "title": "AeroMexico Visa Secured Card",
+            "original_title": "AeroMexico Visa Secured Card",
             "fee": 25,
             "url": "https://www.usbank.com/credit-cards/aeromexico-visa-secured-credit-card.html",
             "foreign_fee": true,
@@ -52014,7 +52083,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 5 ThankYou\u00ae Points for every $1 you spend at restaurants and on entertainment."
+                    "title": "Earn 5 ThankYou Points for every $1 you spend at restaurants and on entertainment."
                 },
                 {
                     "title": "Earn 1 point per $1 on all other purchases."
@@ -52143,12 +52212,12 @@ data = {
             }
         }
     ],
-    "Discover it\u00ae Secured": [
+    "Discover it Secured": [
         93,
         {
             "_id": "5e690b260b077d5830cadd6b",
-            "title": "Discover it\u00ae Secured",
-            "original_title": "Discover it\u00ae Secured",
+            "title": "Discover it Secured",
+            "original_title": "Discover it Secured",
             "fee": 0,
             "url": "https://www.discover.com/credit-cards/index.html",
             "foreign_fee": false,
@@ -52507,12 +52576,12 @@ data = {
             }
         }
     ],
-    "Alliant Cashback Visa\u00ae Signature Credit Card": [
+    "Alliant Cashback Visa Signature Credit Card": [
         94,
         {
             "_id": "5e690b260b077d5830cada64",
-            "title": "Alliant Cashback Visa\u00ae Signature Credit Card",
-            "original_title": "Alliant Cashback Visa\u00ae Signature Credit Card",
+            "title": "Alliant Cashback Visa Signature Credit Card",
+            "original_title": "Alliant Cashback Visa Signature Credit Card",
             "fee": 99,
             "url": "https://www.alliantcreditunion.org/bank/visa-signature-card",
             "foreign_fee": false,
@@ -52941,16 +53010,16 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "You\u2019ll also earn additional miles at Aeroplan Partners when you also provide your Aeroplan Number or present your Aeroplan"
+                    "title": "Youll also earn additional miles at Aeroplan Partners when you also provide your Aeroplan Number or present your Aeroplan"
                 },
                 {
                     "title": "No Pre-Set Spending Limit on Purchases"
                 },
                 {
-                    "title": "New American Express\u00ae AeroplanPlus\u00ae* Gold Cardmembers, earn 15,000 bonus Aeroplan miles after you spend $500 in your first 3 months of Card membership"
+                    "title": "New American Express AeroplanPlus* Gold Cardmembers, earn 15,000 bonus Aeroplan miles after you spend $500 in your first 3 months of Card membership"
                 },
                 {
-                    "title": "Earn Aeroplan Miles faster with two free Supplementary Cards \u2013 a $100* value ($50* for each additional Supplementary Cards)"
+                    "title": "Earn Aeroplan Miles faster with two free Supplementary Cards  a $100* value ($50* for each additional Supplementary Cards)"
                 },
                 {
                     "title": "Earn 1 Aeroplan Mile for every $1 in Card purchases up to $10,000"
@@ -52984,12 +53053,12 @@ data = {
             }
         }
     ],
-    "PenFed Platinum Rewards Visa\u00ae Signature Card": [
+    "PenFed Platinum Rewards Visa Signature Card": [
         94,
         {
             "_id": "5e690b260b077d5830cadfbe",
-            "title": "PenFed Platinum Rewards Visa\u00ae Signature Card",
-            "original_title": "PenFed Platinum Rewards Visa\u00ae Signature Card",
+            "title": "PenFed Platinum Rewards Visa Signature Card",
+            "original_title": "PenFed Platinum Rewards Visa Signature Card",
             "fee": 0,
             "url": "https://www.penfed.org/visasignaturepoints/",
             "foreign_fee": true,
@@ -53130,7 +53199,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "The PNC Visa Platinum Card doesn\u2019t allow you to earn free airline miles or cash-back bonuses. But that\u2019s not what this card is designed for. It\u2019s set up for consumers looking for a no-frills card that comes with solid interest rates. This card delivers on that."
+                    "title": "The PNC Visa Platinum Card doesnt allow you to earn free airline miles or cash-back bonuses. But thats not what this card is designed for. Its set up for consumers looking for a no-frills card that comes with solid interest rates. This card delivers on that."
                 },
                 {
                     "title": "No annual fee."
@@ -53567,12 +53636,12 @@ data = {
             }
         }
     ],
-    "Citi\u00ae Diamond Preferred\u00ae Card (Old Visa)": [
+    "Citi Diamond Preferred Card (Old Visa)": [
         96,
         {
             "_id": "5e690b260b077d5830cadc6f",
-            "title": "Citi\u00ae Diamond Preferred\u00ae Card (Old Visa)",
-            "original_title": "Citi\u00ae Diamond Preferred\u00ae Card (Old Visa)",
+            "title": "Citi Diamond Preferred Card (Old Visa)",
+            "original_title": "Citi Diamond Preferred Card (Old Visa)",
             "fee": 0,
             "url": "https://www.citi.com/credit-cards/credit-card-details/detail.do?ID=citi-diamond-preferred-credit-card&category=view-all-credit-cards",
             "foreign_fee": true,
@@ -53684,7 +53753,7 @@ data = {
                     "title": "Earn an additional 5 points per $1 spent at Drury Hotel Properties when using your Drury Gold Key Club credit card."
                 },
                 {
-                    "title": "Earn 1 point per $1 spent everywhere else VISA\u00ae is accepted."
+                    "title": "Earn 1 point per $1 spent everywhere else VISA is accepted."
                 }
             ],
             "earnings": [],
@@ -53820,10 +53889,10 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Save 5\u00a2/gal for every $100 spent on your card."
+                    "title": "Save 5/gal for every $100 spent on your card."
                 },
                 {
-                    "title": "Save 10\u00a2/gal for every $100 spent on your card for groceries, dining out, travel expenses, and home improvement."
+                    "title": "Save 10/gal for every $100 spent on your card for groceries, dining out, travel expenses, and home improvement."
                 }
             ],
             "earnings": [],
@@ -54024,12 +54093,12 @@ data = {
             }
         }
     ],
-    "The Universal Premium FleetCard MasterCard\u00ae": [
+    "The Universal Premium FleetCard MasterCard": [
         97,
         {
             "_id": "5e690b260b077d5830cae33a",
-            "title": "The Universal Premium FleetCard MasterCard\u00ae",
-            "original_title": "The Universal Premium FleetCard MasterCard\u00ae",
+            "title": "The Universal Premium FleetCard MasterCard",
+            "original_title": "The Universal Premium FleetCard MasterCard",
             "fee": 0,
             "url": "http://universalpremiumcard.com/",
             "foreign_fee": true,
@@ -54184,7 +54253,7 @@ data = {
                     "title": "No card needed. Easily access PayPal Credit right from your PayPal account"
                 },
                 {
-                    "title": "Get No Interest if paid in full in 6 months on every purchase of $99 or more.\u2074 Interest will be charged to your account from the purchase date if the balance is not paid in full within 6 months. Minimum monthly payments required."
+                    "title": "Get No Interest if paid in full in 6 months on every purchase of $99 or more. Interest will be charged to your account from the purchase date if the balance is not paid in full within 6 months. Minimum monthly payments required."
                 },
                 {
                     "title": "Get 6 months promotional financing on purchases of $99+ everywhere PayPal is accepted"
@@ -54209,12 +54278,12 @@ data = {
             }
         }
     ],
-    "Citi Simplicity\u00ae Visa Card": [
+    "Citi Simplicity Visa Card": [
         98,
         {
             "_id": "5e690b260b077d5830cadc65",
-            "title": "Citi Simplicity\u00ae Visa Card",
-            "original_title": "Citi Simplicity\u00ae Visa Card",
+            "title": "Citi Simplicity Visa Card",
+            "original_title": "Citi Simplicity Visa Card",
             "fee": 0,
             "url": "https://www.citi.com/credit-cards/credit-card-details/detail.do?ID=citi-simplicity-credit-card",
             "foreign_fee": true,
@@ -54277,12 +54346,12 @@ data = {
             }
         }
     ],
-    "Platinum MasterCard\u00ae": [
+    "Platinum MasterCard": [
         98,
         {
             "_id": "5e690b260b077d5830cae0c8",
-            "title": "Platinum MasterCard\u00ae",
-            "original_title": "Platinum MasterCard\u00ae",
+            "title": "Platinum MasterCard",
+            "original_title": "Platinum MasterCard",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -54346,12 +54415,12 @@ data = {
             }
         }
     ],
-    "College Rewards Visa\u00ae": [
+    "College Rewards Visa": [
         98,
         {
             "_id": "5e690b260b077d5830cadcf8",
-            "title": "College Rewards Visa\u00ae",
-            "original_title": "College Rewards Visa\u00ae",
+            "title": "College Rewards Visa",
+            "original_title": "College Rewards Visa",
             "fee": 0,
             "url": "https://online1.elancard.com/oad/catalog/learnMore.controller?productId=35",
             "foreign_fee": true,
@@ -54414,12 +54483,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Secured": [
+    "Visa Secured": [
         98,
         {
             "_id": "5e690b260b077d5830cae528",
-            "title": "Visa\u00ae Secured",
-            "original_title": "Visa\u00ae Secured",
+            "title": "Visa Secured",
+            "original_title": "Visa Secured",
             "fee": 25,
             "url": "https://www.fairwinds.org/personal/personalcards/credit.asp#secured",
             "foreign_fee": true,
@@ -54808,7 +54877,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn one point for every dollar you charge to your MilesAway MasterCard\u00ae."
+                    "title": "Earn one point for every dollar you charge to your MilesAway MasterCard."
                 }
             ],
             "earnings": [],
@@ -54864,12 +54933,12 @@ data = {
             }
         }
     ],
-    "The Caribbean Education Foundation Visa\u00ae Platinum Rewards Card": [
+    "The Caribbean Education Foundation Visa Platinum Rewards Card": [
         99,
         {
             "_id": "5e690b260b077d5830cae323",
-            "title": "The Caribbean Education Foundation Visa\u00ae Platinum Rewards Card",
-            "original_title": "The Caribbean Education Foundation Visa\u00ae Platinum Rewards Card",
+            "title": "The Caribbean Education Foundation Visa Platinum Rewards Card",
+            "original_title": "The Caribbean Education Foundation Visa Platinum Rewards Card",
             "fee": 0,
             "url": "https://www.cardpartner.com/app/cef",
             "foreign_fee": true,
@@ -54948,7 +55017,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "In your first year as a new Cobalt Cardmember, you can earn 2,500 Membership Rewards\u00ae points for each monthly billing period in which you spend $500 in purchases on your Card. This could add up to 30,000 points in a year."
+                    "title": "In your first year as a new Cobalt Cardmember, you can earn 2,500 Membership Rewards points for each monthly billing period in which you spend $500 in purchases on your Card. This could add up to 30,000 points in a year."
                 },
                 {
                     "title": "Earn 5x points on eligible eats & drinks, including restaurants, bars, grocery stores and food delivery in Canada"
@@ -55003,12 +55072,12 @@ data = {
             }
         }
     ],
-    "Virgin America Visa Signature\u00ae Card": [
+    "Virgin America Visa Signature Card": [
         99,
         {
             "_id": "5e690b260b077d5830cae3e2",
-            "title": "Virgin America Visa Signature\u00ae Card",
-            "original_title": "Virgin America Visa Signature\u00ae Card",
+            "title": "Virgin America Visa Signature Card",
+            "original_title": "Virgin America Visa Signature Card",
             "fee": 49,
             "url": "https://www.virginamerica.com/elevate-frequent-flyer/credit-card",
             "foreign_fee": true,
@@ -55021,7 +55090,7 @@ data = {
                     "title": "Use your card everywhere else and earn 1 point per $1 on all of your purchases"
                 },
                 {
-                    "title": "Hit the ground flying with extra Elevate\u00ae points and exclusive perks like a free checked bag, $150 off a companion ticket, and more."
+                    "title": "Hit the ground flying with extra Elevate points and exclusive perks like a free checked bag, $150 off a companion ticket, and more."
                 },
                 {
                     "title": "Get one free checked bag for you and your plus-one when you use your card to purchase the flight."
@@ -55218,12 +55287,12 @@ data = {
             }
         }
     ],
-    "The Lincoln Highway Association Visa\u00ae Platinum Rewards Card": [
+    "The Lincoln Highway Association Visa Platinum Rewards Card": [
         100,
         {
             "_id": "5e690b260b077d5830cae32d",
-            "title": "The Lincoln Highway Association Visa\u00ae Platinum Rewards Card",
-            "original_title": "The Lincoln Highway Association Visa\u00ae Platinum Rewards Card",
+            "title": "The Lincoln Highway Association Visa Platinum Rewards Card",
+            "original_title": "The Lincoln Highway Association Visa Platinum Rewards Card",
             "fee": 0,
             "url": "https://www.lincolnhighwayassoc.org/about/credit_card/",
             "foreign_fee": true,
@@ -55356,12 +55425,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Business Bonus Rewards PLUS": [
+    "Visa Business Bonus Rewards PLUS": [
         100,
         {
             "_id": "5e690b260b077d5830cae4f3",
-            "title": "Visa\u00ae Business Bonus Rewards PLUS",
-            "original_title": "Visa\u00ae Business Bonus Rewards PLUS",
+            "title": "Visa Business Bonus Rewards PLUS",
+            "original_title": "Visa Business Bonus Rewards PLUS",
             "fee": 50,
             "url": "https://online1.elancard.com/oad/catalog/learnMore.controller?productId=05",
             "foreign_fee": true,
@@ -55554,12 +55623,12 @@ data = {
             }
         }
     ],
-    "U.S. Bank FlexPerks\u00ae Business Travel Rewards Visa\u00ae Card": [
+    "U.S. Bank FlexPerks Business Travel Rewards Visa Card": [
         100,
         {
             "_id": "5e690b260b077d5830cae364",
-            "title": "U.S. Bank FlexPerks\u00ae Business Travel Rewards Visa\u00ae Card",
-            "original_title": "U.S. Bank FlexPerks\u00ae Business Travel Rewards Visa\u00ae Card",
+            "title": "U.S. Bank FlexPerks Business Travel Rewards Visa Card",
+            "original_title": "U.S. Bank FlexPerks Business Travel Rewards Visa Card",
             "fee": 55,
             "url": "https://www.usbank.com/cgi_w/cfm/credit/flexperks/usb_flexperks_bus_travel.cfm",
             "foreign_fee": true,
@@ -55753,12 +55822,12 @@ data = {
             }
         }
     ],
-    "The Priceline Rewards\u2122 Visa\u00ae Card (Legacy Version 2x)": [
+    "The Priceline Rewards Visa Card (Legacy Version 2x)": [
         101,
         {
             "_id": "5e690b260b077d5830cae333",
-            "title": "The Priceline Rewards\u2122 Visa\u00ae Card (Legacy Version 2x)",
-            "original_title": "The Priceline Rewards\u2122 Visa\u00ae Card (Legacy Version 2x)",
+            "title": "The Priceline Rewards Visa Card (Legacy Version 2x)",
+            "original_title": "The Priceline Rewards Visa Card (Legacy Version 2x)",
             "fee": 0,
             "url": "https://www.pricelinevisa.com/apply/Landing.action?campaignId=1821&cellNumber=15&prodidreq=CCVVS53573&referrerid=0000000000",
             "foreign_fee": true,
@@ -55883,12 +55952,12 @@ data = {
             }
         }
     ],
-    "First Progress Platinum Elite MasterCard\u00ae Secured Credit Card": [
+    "First Progress Platinum Elite MasterCard Secured Credit Card": [
         101,
         {
             "_id": "5e690b260b077d5830caddb5",
-            "title": "First Progress Platinum Elite MasterCard\u00ae Secured Credit Card",
-            "original_title": "First Progress Platinum Elite MasterCard\u00ae Secured Credit Card",
+            "title": "First Progress Platinum Elite MasterCard Secured Credit Card",
+            "original_title": "First Progress Platinum Elite MasterCard Secured Credit Card",
             "fee": 29,
             "url": "http://stage.progresscredit.com/card_options",
             "foreign_fee": true,
@@ -55917,19 +55986,19 @@ data = {
             }
         }
     ],
-    "Visa Signature\u00ae Elite Credit Card": [
+    "Visa Signature Elite Credit Card": [
         101,
         {
             "_id": "5e690b260b077d5830cae4e0",
-            "title": "Visa Signature\u00ae Elite Credit Card",
-            "original_title": "Visa Signature\u00ae Elite Credit Card",
+            "title": "Visa Signature Elite Credit Card",
+            "original_title": "Visa Signature Elite Credit Card",
             "fee": 175,
             "url": "https://public.websteronline.com/private-banking/visa-signature-elite-credit-card",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 1 point for every net $1 you spend. Plus, get a 25% bonus on all points earned every month \u2014 automatically."
+                    "title": "Earn 1 point for every net $1 you spend. Plus, get a 25% bonus on all points earned every month  automatically."
                 }
             ],
             "earnings": [],
@@ -56019,12 +56088,12 @@ data = {
             }
         }
     ],
-    "TCF Bank Platinum Edition\u00ae Visa\u00ae Card": [
+    "TCF Bank Platinum Edition Visa Card": [
         101,
         {
             "_id": "5e690b260b077d5830cae305",
-            "title": "TCF Bank Platinum Edition\u00ae Visa\u00ae Card",
-            "original_title": "TCF Bank Platinum Edition\u00ae Visa\u00ae Card",
+            "title": "TCF Bank Platinum Edition Visa Card",
+            "original_title": "TCF Bank Platinum Edition Visa Card",
             "fee": 0,
             "url": "https://www.tcfbank.com/personal/credit-cards",
             "foreign_fee": true,
@@ -56127,12 +56196,12 @@ data = {
             }
         }
     ],
-    "BMO Harris Bank Premier Rewards MasterCard\u00ae": [
+    "BMO Harris Bank Premier Rewards MasterCard": [
         102,
         {
             "_id": "5e690b260b077d5830cadb42",
-            "title": "BMO Harris Bank Premier Rewards MasterCard\u00ae",
-            "original_title": "BMO Harris Bank Premier Rewards MasterCard\u00ae",
+            "title": "BMO Harris Bank Premier Rewards MasterCard",
+            "original_title": "BMO Harris Bank Premier Rewards MasterCard",
             "fee": 79,
             "url": "https://www.bmoharris.com/us/personal-finance/credit-cards/premier-rewards-credit-card#page=page-1",
             "foreign_fee": true,
@@ -56225,12 +56294,12 @@ data = {
             }
         }
     ],
-    "U.S. Bank FlexPerks\u00ae Travel Rewards American Express\u00ae Card": [
+    "U.S. Bank FlexPerks Travel Rewards American Express Card": [
         102,
         {
             "_id": "5e690b260b077d5830cae367",
-            "title": "U.S. Bank FlexPerks\u00ae Travel Rewards American Express\u00ae Card",
-            "original_title": "U.S. Bank FlexPerks\u00ae Travel Rewards American Express\u00ae Card",
+            "title": "U.S. Bank FlexPerks Travel Rewards American Express Card",
+            "original_title": "U.S. Bank FlexPerks Travel Rewards American Express Card",
             "nickname": "AMEX",
             "fee": 49,
             "url": "https://www.usbank.com/credit-cards/flexperks-travel-rewards-american-express-card.html",
@@ -56343,12 +56412,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Business Credit Card": [
+    "Visa Business Credit Card": [
         102,
         {
             "_id": "5e690b260b077d5830cae50e",
-            "title": "Visa\u00ae Business Credit Card",
-            "original_title": "Visa\u00ae Business Credit Card",
+            "title": "Visa Business Credit Card",
+            "original_title": "Visa Business Credit Card",
             "fee": 0,
             "url": "http://www.eclipsebank.com/loans-credit/credit-cards",
             "foreign_fee": true,
@@ -56671,12 +56740,12 @@ data = {
             }
         }
     ],
-    "U.S. Bank Perks+ Visa\u00ae Signature Card": [
+    "U.S. Bank Perks+ Visa Signature Card": [
         103,
         {
             "_id": "5e690b260b077d5830cae369",
-            "title": "U.S. Bank Perks+ Visa\u00ae Signature Card",
-            "original_title": "U.S. Bank Perks+ Visa\u00ae Signature Card",
+            "title": "U.S. Bank Perks+ Visa Signature Card",
+            "original_title": "U.S. Bank Perks+ Visa Signature Card",
             "fee": 0,
             "url": "https://www.usbank.com/credit-cards/perks-plus-visa-card.html",
             "foreign_fee": true,
@@ -56724,12 +56793,12 @@ data = {
             }
         }
     ],
-    "Blue Sky from American Express\u00ae": [
+    "Blue Sky from American Express": [
         103,
         {
             "_id": "5e690b260b077d5830cadb3c",
-            "title": "Blue Sky from American Express\u00ae",
-            "original_title": "Blue Sky from American Express\u00ae",
+            "title": "Blue Sky from American Express",
+            "original_title": "Blue Sky from American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www304.americanexpress.com/personal-card-application/blue-sky-credit-card/25330-10-0?intlink=us-CCSG-CardDetail-BS-Apply-Top",
@@ -57138,7 +57207,7 @@ data = {
                     "title": "No expiration on your points."
                 },
                 {
-                    "title": "Get up to $100 in Airline Incidental Statement Credit and up to $100 in TSA Pre\u2713\u00ae/Global Entry Statement Credit."
+                    "title": "Get up to $100 in Airline Incidental Statement Credit and up to $100 in TSA Pre/Global Entry Statement Credit."
                 },
                 {
                     "title": "Get a 25%-75% bonus with the Preferred Rewards Program."
@@ -57240,12 +57309,12 @@ data = {
             }
         }
     ],
-    "Upromise Platinum MasterCard\u00ae": [
+    "Upromise Platinum MasterCard": [
         104,
         {
             "_id": "5e690b260b077d5830cae3b6",
-            "title": "Upromise Platinum MasterCard\u00ae",
-            "original_title": "Upromise Platinum MasterCard\u00ae",
+            "title": "Upromise Platinum MasterCard",
+            "original_title": "Upromise Platinum MasterCard",
             "fee": 0,
             "url": "https://www.upromisemastercard.com/apply/Landing.action?campaignId=1678&cellNumber=1&referrerid=VHPAPP1234",
             "foreign_fee": true,
@@ -57670,12 +57739,12 @@ data = {
             }
         }
     ],
-    "Citi\u00ae Dividend Platinum Select\u00ae Visa\u00ae Card": [
+    "Citi Dividend Platinum Select Visa Card": [
         105,
         {
             "_id": "5e690b260b077d5830cadc72",
-            "title": "Citi\u00ae Dividend Platinum Select\u00ae Visa\u00ae Card",
-            "original_title": "Citi\u00ae Dividend Platinum Select\u00ae Visa\u00ae Card",
+            "title": "Citi Dividend Platinum Select Visa Card",
+            "original_title": "Citi Dividend Platinum Select Visa Card",
             "fee": 0,
             "url": "https://www.citicards.com/cards/acq/Apply.do?app=UNSOL&sc=4V4ZJ4U2&m=ZCK1111111W&cmp=AFA~01~120201~CARDSACQ~Credit&B=V&screenID=3000&uc=CCU&t=t&link=Consumer_1497740796&ProspectID=316538372E78452B92A0CA378DE7814F&langId=EN&siteId=CB",
             "foreign_fee": true,
@@ -57999,12 +58068,12 @@ data = {
             }
         }
     ],
-    "Dream\u00ae MasterCard\u00ae": [
+    "Dream MasterCard": [
         106,
         {
             "_id": "5e690b260b077d5830cadd79",
-            "title": "Dream\u00ae MasterCard\u00ae",
-            "original_title": "Dream\u00ae MasterCard\u00ae",
+            "title": "Dream MasterCard",
+            "original_title": "Dream MasterCard",
             "fee": 0,
             "url": "https://www.firstbankcard.com/common/dynamicapp/web/chemical/learnmore_mcmax.html",
             "foreign_fee": true,
@@ -58036,12 +58105,12 @@ data = {
             }
         }
     ],
-    "Delta SkyMiles\u00ae Credit Card from American Express": [
+    "Delta SkyMiles Credit Card from American Express": [
         106,
         {
             "_id": "5e690b260b077d5830cadd43",
-            "title": "Delta SkyMiles\u00ae Credit Card from American Express",
-            "original_title": "Delta SkyMiles\u00ae Credit Card from American Express",
+            "title": "Delta SkyMiles Credit Card from American Express",
+            "original_title": "Delta SkyMiles Credit Card from American Express",
             "nickname": "AMEX",
             "fee": 55,
             "url": "http://www.delta.com/content/www/en_US/skymiles/earn-miles/earn-miles-with-partners/credit-card-partners/u-s-credit-cards.html",
@@ -58123,7 +58192,7 @@ data = {
                     "title": "Earn 5% cash back on books, earned on the first $750 spent monthly in this category (1% after)"
                 },
                 {
-                    "title": "Earn 5% cash back gas and groceries, earned on the first $500 in combined monthly spending for these two categories (after that it\u2019s 1%)"
+                    "title": "Earn 5% cash back gas and groceries, earned on the first $500 in combined monthly spending for these two categories (after that its 1%)"
                 },
                 {
                     "title": "Earn 1% cash back on regular spending"
@@ -58573,12 +58642,12 @@ data = {
             }
         }
     ],
-    "U.S. Bank FlexPerks\u00ae Select+ American Express\u00ae Card": [
+    "U.S. Bank FlexPerks Select+ American Express Card": [
         107,
         {
             "_id": "5e690b260b077d5830cae366",
-            "title": "U.S. Bank FlexPerks\u00ae Select+ American Express\u00ae Card",
-            "original_title": "U.S. Bank FlexPerks\u00ae Select+ American Express\u00ae Card",
+            "title": "U.S. Bank FlexPerks Select+ American Express Card",
+            "original_title": "U.S. Bank FlexPerks Select+ American Express Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.usbank.com/credit-cards/flexperks-select-plus-american-express-card.html",
@@ -58684,12 +58753,12 @@ data = {
             }
         }
     ],
-    "Indiana University BankAmericard Cash Rewards\u2122 Visa\u00ae": [
+    "Indiana University BankAmericard Cash Rewards Visa": [
         107,
         {
             "_id": "5e690b260b077d5830cade73",
-            "title": "Indiana University BankAmericard Cash Rewards\u2122 Visa\u00ae",
-            "original_title": "Indiana University BankAmericard Cash Rewards\u2122 Visa\u00ae",
+            "title": "Indiana University BankAmericard Cash Rewards Visa",
+            "original_title": "Indiana University BankAmericard Cash Rewards Visa",
             "fee": 0,
             "url": "https://alumni.indiana.edu/show-pride/credit-card.html",
             "foreign_fee": true,
@@ -58804,7 +58873,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn one H-D\u2122 Genuine Rewards point for every $1 in net purchases."
+                    "title": "Earn one H-D Genuine Rewards point for every $1 in net purchases."
                 }
             ],
             "earnings": [],
@@ -58826,12 +58895,12 @@ data = {
             }
         }
     ],
-    "Ameriprise World Elite MasterCard\u00ae": [
+    "Ameriprise World Elite MasterCard": [
         108,
         {
             "_id": "5e690b260b077d5830cadab1",
-            "title": "Ameriprise World Elite MasterCard\u00ae",
-            "original_title": "Ameriprise World Elite MasterCard\u00ae",
+            "title": "Ameriprise World Elite MasterCard",
+            "original_title": "Ameriprise World Elite MasterCard",
             "fee": 150,
             "url": "http://www.barclaycardus.com/apply/Landing.action?campaignId=1867&cellNumber=2&prodidreq=CCMMX55884",
             "foreign_fee": true,
@@ -58980,10 +59049,10 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "On non-fuel purchases at their stations, it\u2019s a 3% rebate."
+                    "title": "On non-fuel purchases at their stations, its a 3% rebate."
                 },
                 {
-                    "title": "On fuel purchases at Chevron/Texaco stations, it\u2019s 10 cents per gallon."
+                    "title": "On fuel purchases at Chevron/Texaco stations, its 10 cents per gallon."
                 },
                 {
                     "title": "Earn 1% rebate on all purchases."
@@ -59044,12 +59113,12 @@ data = {
             }
         }
     ],
-    "Ameriprise World MasterCard\u00ae": [
+    "Ameriprise World MasterCard": [
         108,
         {
             "_id": "5e690b260b077d5830cadab2",
-            "title": "Ameriprise World MasterCard\u00ae",
-            "original_title": "Ameriprise World MasterCard\u00ae",
+            "title": "Ameriprise World MasterCard",
+            "original_title": "Ameriprise World MasterCard",
             "fee": 0,
             "url": "https://www.ameriprise.com/cash-cards-and-lending/cards/ameriprise-world-mastercard.asp",
             "foreign_fee": true,
@@ -59144,19 +59213,19 @@ data = {
             }
         }
     ],
-    "BankAmericard\u00ae Better Balance Rewards\u2122 Credit Card": [
+    "BankAmericard Better Balance Rewards Credit Card": [
         128,
         {
             "_id": "5e690b260b077d5830cadb02",
-            "title": "BankAmericard\u00ae Better Balance Rewards\u2122 Credit Card",
-            "original_title": "BankAmericard\u00ae Better Balance Rewards\u2122 Credit Card",
+            "title": "BankAmericard Better Balance Rewards Credit Card",
+            "original_title": "BankAmericard Better Balance Rewards Credit Card",
             "fee": 0,
             "url": "https://www.bankofamerica.com/credit-cards/products/better-balance-rewards.go",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Get an additional $5 bonus per quarter if you have a Bank of America\u00ae checking or savings account."
+                    "title": "Get an additional $5 bonus per quarter if you have a Bank of America checking or savings account."
                 },
                 {
                     "title": "Earn $25 per quarter towards your balance when you pay more than the monthly minimum and on time each month."
@@ -59268,7 +59337,7 @@ data = {
                     "title": "Earn 2 Rewards Points at qualifying U.S. gas stations and U.S. supermarkets."
                 },
                 {
-                    "title": "Earn 2 Rewards Points at Dillard's with a Dillard's Card \u2013 in store, online or via catalog or phone."
+                    "title": "Earn 2 Rewards Points at Dillard's with a Dillard's Card  in store, online or via catalog or phone."
                 },
                 {
                     "title": "Earn 1 Rewards Point everywhere else American Express is welcomed."
@@ -59277,7 +59346,7 @@ data = {
             "earnings": [
                 {
                     "points": 2,
-                    "description": "Earn 2 Rewards Points at Dillard's with a Dillard's Card \u2013 in store, online or via catalog or phone.",
+                    "description": "Earn 2 Rewards Points at Dillard's with a Dillard's Card  in store, online or via catalog or phone.",
                     "category": 4
                 },
                 {
@@ -59456,12 +59525,12 @@ data = {
             }
         }
     ],
-    "Rewards with ScoreCard\u2122": [
+    "Rewards with ScoreCard": [
         109,
         {
             "_id": "5e690b260b077d5830cae1e7",
-            "title": "Rewards with ScoreCard\u2122",
-            "original_title": "Rewards with ScoreCard\u2122",
+            "title": "Rewards with ScoreCard",
+            "original_title": "Rewards with ScoreCard",
             "fee": 0,
             "url": "https://directionscu.org/Personal/Credit-Cards.aspx#107",
             "foreign_fee": true,
@@ -59558,12 +59627,12 @@ data = {
             }
         }
     ],
-    "Wells Fargo Propel 365 American Express\u00ae Card": [
+    "Wells Fargo Propel 365 American Express Card": [
         109,
         {
             "_id": "5e690b260b077d5830cae541",
-            "title": "Wells Fargo Propel 365 American Express\u00ae Card",
-            "original_title": "Wells Fargo Propel 365 American Express\u00ae Card",
+            "title": "Wells Fargo Propel 365 American Express Card",
+            "original_title": "Wells Fargo Propel 365 American Express Card",
             "nickname": "AMEX",
             "fee": 45,
             "url": "https://www.wellsfargo.com/credit-cards/propel365/",
@@ -59685,7 +59754,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "United ClubSM membership* \u2014 up to a $550 value per year"
+                    "title": "United ClubSM membership*  up to a $550 value per year"
                 },
                 {
                     "title": "Receive preferential treatment to ease your way through the airport with priority check-in, security screening (where available), boarding and baggage handling privileges."
@@ -59694,10 +59763,10 @@ data = {
                     "title": "Purchases made with your Club card outside the U.S. will not be subject to foreign transaction fees."
                 },
                 {
-                    "title": "Free first and second checked bags \u2014 savings of up to $240 per roundtrip"
+                    "title": "Free first and second checked bags  savings of up to $240 per roundtrip"
                 },
                 {
-                    "title": "Earn even more on tickets purchased from United \u2014 get an additional 0.5 mile for a total of 2 miles per $1 spent."
+                    "title": "Earn even more on tickets purchased from United  get an additional 0.5 mile for a total of 2 miles per $1 spent."
                 },
                 {
                     "title": "Earn 1.5 miles per $1 on every purchase."
@@ -59709,7 +59778,7 @@ data = {
             "earnings": [
                 {
                     "points": 2,
-                    "description": "Earn even more on tickets purchased from United \u2014 get an additional 0.5 mile for a total of 2 miles per $1 spent.",
+                    "description": "Earn even more on tickets purchased from United  get an additional 0.5 mile for a total of 2 miles per $1 spent.",
                     "category": 7
                 },
                 {
@@ -59735,12 +59804,12 @@ data = {
             }
         }
     ],
-    "The Wyndham Rewards\u00ae Visa Signature\u00ae Card (Annual Fee)": [
+    "The Wyndham Rewards Visa Signature Card (Annual Fee)": [
         109,
         {
             "_id": "5e690b260b077d5830cae340",
-            "title": "The Wyndham Rewards\u00ae Visa Signature\u00ae Card (Annual Fee)",
-            "original_title": "The Wyndham Rewards\u00ae Visa Signature\u00ae Card (Annual Fee)",
+            "title": "The Wyndham Rewards Visa Signature Card (Annual Fee)",
+            "original_title": "The Wyndham Rewards Visa Signature Card (Annual Fee)",
             "fee": 69,
             "url": "https://www.barclaycardus.com/apply/Application.action",
             "foreign_fee": true,
@@ -59809,12 +59878,12 @@ data = {
             }
         }
     ],
-    "Wells Fargo Propel American Express\u00ae Card": [
+    "Wells Fargo Propel American Express Card": [
         110,
         {
             "_id": "5e690b260b077d5830cae542",
-            "title": "Wells Fargo Propel American Express\u00ae Card",
-            "original_title": "Wells Fargo Propel American Express\u00ae Card",
+            "title": "Wells Fargo Propel American Express Card",
+            "original_title": "Wells Fargo Propel American Express Card",
             "nickname": "AMEX, AMEX",
             "fee": 0,
             "url": "https://www.wellsfargo.com/credit-cards/propel/",
@@ -60060,12 +60129,12 @@ data = {
             }
         }
     ],
-    "Chevron and Texaco Universal Business MasterCard\u00ae": [
+    "Chevron and Texaco Universal Business MasterCard": [
         110,
         {
             "_id": "5e690b260b077d5830cadc35",
-            "title": "Chevron and Texaco Universal Business MasterCard\u00ae",
-            "original_title": "Chevron and Texaco Universal Business MasterCard\u00ae",
+            "title": "Chevron and Texaco Universal Business MasterCard",
+            "original_title": "Chevron and Texaco Universal Business MasterCard",
             "fee": 0,
             "url": "http://www.chevrontexacobusinesscard.com/apply-now.aspx",
             "foreign_fee": true,
@@ -60128,12 +60197,12 @@ data = {
             }
         }
     ],
-    "Chase Slate\u00ae (Visa)": [
+    "Chase Slate (Visa)": [
         111,
         {
             "_id": "5e690b260b077d5830cadc31",
-            "title": "Chase Slate\u00ae (Visa)",
-            "original_title": "Chase Slate\u00ae (Visa)",
+            "title": "Chase Slate (Visa)",
+            "original_title": "Chase Slate (Visa)",
             "fee": 0,
             "url": "https://creditcards.chase.com/balance-transfer-credit-cards/chase-slate",
             "foreign_fee": true,
@@ -60238,12 +60307,12 @@ data = {
             }
         }
     ],
-    "Capital One\u00ae Spark\u00ae Select for Business": [
+    "Capital One Spark Select for Business": [
         111,
         {
             "_id": "5e690b260b077d5830cadbe3",
-            "title": "Capital One\u00ae Spark\u00ae Select for Business",
-            "original_title": "Capital One\u00ae Spark\u00ae Select for Business",
+            "title": "Capital One Spark Select for Business",
+            "original_title": "Capital One Spark Select for Business",
             "fee": 0,
             "url": "http://www.capitalone.com/credit-cards/business/spark-select/",
             "foreign_fee": true,
@@ -60344,12 +60413,12 @@ data = {
             }
         }
     ],
-    "Barnes & Noble MasterCard\u00ae": [
+    "Barnes & Noble MasterCard": [
         111,
         {
             "_id": "5e690b260b077d5830cadb10",
-            "title": "Barnes & Noble MasterCard\u00ae",
-            "original_title": "Barnes & Noble MasterCard\u00ae",
+            "title": "Barnes & Noble MasterCard",
+            "original_title": "Barnes & Noble MasterCard",
             "fee": 0,
             "url": "http://www.barnesandnoble.com/membership/mc.asp",
             "foreign_fee": true,
@@ -60418,12 +60487,12 @@ data = {
             }
         }
     ],
-    "Bass Pro Shops\u00ae Outdoor Rewards\u2120 Platinum Plus": [
+    "Bass Pro Shops Outdoor Rewards Platinum Plus": [
         111,
         {
             "_id": "5e690b260b077d5830cadb13",
-            "title": "Bass Pro Shops\u00ae Outdoor Rewards\u2120 Platinum Plus",
-            "original_title": "Bass Pro Shops\u00ae Outdoor Rewards\u2120 Platinum Plus",
+            "title": "Bass Pro Shops Outdoor Rewards Platinum Plus",
+            "original_title": "Bass Pro Shops Outdoor Rewards Platinum Plus",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -60492,12 +60561,12 @@ data = {
             }
         }
     ],
-    "First Progress Platinum Prestige MasterCard\u00ae Secured Credit Card": [
+    "First Progress Platinum Prestige MasterCard Secured Credit Card": [
         112,
         {
             "_id": "5e690b260b077d5830caddb6",
-            "title": "First Progress Platinum Prestige MasterCard\u00ae Secured Credit Card",
-            "original_title": "First Progress Platinum Prestige MasterCard\u00ae Secured Credit Card",
+            "title": "First Progress Platinum Prestige MasterCard Secured Credit Card",
+            "original_title": "First Progress Platinum Prestige MasterCard Secured Credit Card",
             "fee": 44,
             "url": "https://www.progresscredit.com",
             "foreign_fee": true,
@@ -60609,12 +60678,12 @@ data = {
             }
         }
     ],
-    "Barclaycard Visa\u00ae with Apple Rewards": [
+    "Barclaycard Visa with Apple Rewards": [
         112,
         {
             "_id": "5e690b260b077d5830cadb0a",
-            "title": "Barclaycard Visa\u00ae with Apple Rewards",
-            "original_title": "Barclaycard Visa\u00ae with Apple Rewards",
+            "title": "Barclaycard Visa with Apple Rewards",
+            "original_title": "Barclaycard Visa with Apple Rewards",
             "fee": 0,
             "url": "https://www.barclaycardus.com/apply/Landing.action?campaignId=2047&cellNumber=2",
             "foreign_fee": true,
@@ -60694,12 +60763,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Cash Back": [
+    "Visa Cash Back": [
         112,
         {
             "_id": "5e690b260b077d5830cae50f",
-            "title": "Visa\u00ae Cash Back",
-            "original_title": "Visa\u00ae Cash Back",
+            "title": "Visa Cash Back",
+            "original_title": "Visa Cash Back",
             "fee": 0,
             "url": "https://www.bcu.org/Products/Credit-Cards/Visa-Cash-Back",
             "foreign_fee": true,
@@ -60755,13 +60824,13 @@ data = {
                     "title": "Primary collision and theft insurance coverage on rental cars"
                 },
                 {
-                    "title": "Points are easy to use, with less points required compared to many other rewards programs when booked with the UBS rewards team or on the UBS Rewards website (i.e. book one $900 flight for 50,000 points\u2014and save up to 40,000 points"
+                    "title": "Points are easy to use, with less points required compared to many other rewards programs when booked with the UBS rewards team or on the UBS Rewards website (i.e. book one $900 flight for 50,000 pointsand save up to 40,000 points"
                 },
                 {
                     "title": "No foreign purchase transaction fee"
                 },
                 {
-                    "title": "Flexible rewards options including travel, gift cards, merchandise\u2014and your annual fee"
+                    "title": "Flexible rewards options including travel, gift cards, merchandiseand your annual fee"
                 },
                 {
                     "title": "Enjoy a premium set of benefits at a unique portfolio of hotels with the Visa Infinite Luxury Hotel Collection"
@@ -60785,7 +60854,7 @@ data = {
                     "title": "$250 credit for any qualifying air travel expenses"
                 },
                 {
-                    "title": "$100 application fee statement credit for Global Entry, which includes access to TSA Pre \u2713"
+                    "title": "$100 application fee statement credit for Global Entry, which includes access to TSA Pre "
                 }
             ],
             "earnings": [
@@ -61096,7 +61165,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cae331",
             "title": "The Plum Card from American Express",
-            "original_title": "The Plum Card\u00ae from American Express OPEN",
+            "original_title": "The Plum Card from American Express OPEN",
             "nickname": "AMEX",
             "fee": 250,
             "url": "https://www.americanexpress.com/us/small-business/credit-cards/plum",
@@ -61179,12 +61248,12 @@ data = {
             }
         }
     ],
-    "LANPASS Visa Signature\u00ae Card": [
+    "LANPASS Visa Signature Card": [
         113,
         {
             "_id": "5e690b260b077d5830cadea6",
-            "title": "LANPASS Visa Signature\u00ae Card",
-            "original_title": "LANPASS Visa Signature\u00ae Card",
+            "title": "LANPASS Visa Signature Card",
+            "original_title": "LANPASS Visa Signature Card",
             "fee": 75,
             "url": "https://www.usbank.com/credit-cards/lanpass-visa-signature-credit-card.html",
             "foreign_fee": true,
@@ -61285,12 +61354,12 @@ data = {
             }
         }
     ],
-    "Credit One Bank\u00ae Platinum Card": [
+    "Credit One Bank Platinum Card": [
         113,
         {
             "_id": "5e690b260b077d5830cadd26",
-            "title": "Credit One Bank\u00ae Platinum Card",
-            "original_title": "Credit One Bank\u00ae Platinum Card",
+            "title": "Credit One Bank Platinum Card",
+            "original_title": "Credit One Bank Platinum Card",
             "fee": 35,
             "url": "http://www.creditonecards.com/black/pre-qualification-black.php",
             "foreign_fee": true,
@@ -61331,7 +61400,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Your interest rate won\u2019t increase if your payment is late or you go over your limit."
+                    "title": "Your interest rate wont increase if your payment is late or you go over your limit."
                 },
                 {
                     "title": "No annual fee"
@@ -61370,7 +61439,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cade22",
             "title": "Delta SkyMiles Gold American Express Card",
-            "original_title": "Gold Delta SkyMiles\u00ae Credit Card from American Express",
+            "original_title": "Gold Delta SkyMiles Credit Card from American Express",
             "nickname": "AMEX",
             "fee": 95,
             "url": "https://www.americanexpress.com/us/credit-cards/card/delta-skymiles/?eep=26129&extlink=af-us-ccsg-GDSLM&irgwc=1&veid=QjIXlAzZCxyJWIR0GBQcExbTUkgS-pRZ23A2Xg0&affid=1137073&pid=IR&affname=TPG&sid=12011830006&pmc=113&BUID=CCG&CRTV=controlaffcps&MPR=05",
@@ -61378,7 +61447,7 @@ data = {
             "rewards_type": 4,
             "rewards": [
                 {
-                    "title": "Regardless of where you are or what you pay for with the Gold Delta SkyMiles\u00ae Credit Card, there are no foreign transaction fees from American Express."
+                    "title": "Regardless of where you are or what you pay for with the Gold Delta SkyMiles Credit Card, there are no foreign transaction fees from American Express."
                 },
                 {
                     "title": "Get inspired for your next trip - spend $10,000 in purchases on your card in a calendar year and receive a $100 Delta Flight Credit to get you there sooner."
@@ -61439,12 +61508,12 @@ data = {
             }
         }
     ],
-    "Capital One\u00ae Quicksilver\u00ae Cash Rewards MasterCard (ex Capital One World)": [
+    "Capital One Quicksilver Cash Rewards MasterCard (ex Capital One World)": [
         113,
         {
             "_id": "5e690b260b077d5830cadbdc",
-            "title": "Capital One\u00ae Quicksilver\u00ae Cash Rewards MasterCard (ex Capital One World)",
-            "original_title": "Capital One\u00ae Quicksilver\u00ae Cash Rewards MasterCard (ex Capital One World)",
+            "title": "Capital One Quicksilver Cash Rewards MasterCard (ex Capital One World)",
+            "original_title": "Capital One Quicksilver Cash Rewards MasterCard (ex Capital One World)",
             "fee": 0,
             "url": "",
             "foreign_fee": false,
@@ -61549,12 +61618,12 @@ data = {
             }
         }
     ],
-    "Capital One\u00ae VentureOne\u00ae Rewards Credit Card (MasterCard)": [
+    "Capital One VentureOne Rewards Credit Card (MasterCard)": [
         113,
         {
             "_id": "5e690b260b077d5830cadbe6",
-            "title": "Capital One\u00ae VentureOne\u00ae Rewards Credit Card (MasterCard)",
-            "original_title": "Capital One\u00ae VentureOne\u00ae Rewards Credit Card (MasterCard)",
+            "title": "Capital One VentureOne Rewards Credit Card (MasterCard)",
+            "original_title": "Capital One VentureOne Rewards Credit Card (MasterCard)",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -61618,12 +61687,12 @@ data = {
             }
         }
     ],
-    "TrueEarnings\u00ae Card from Costco and American Express": [
+    "TrueEarnings Card from Costco and American Express": [
         114,
         {
             "_id": "5e690b260b077d5830cae35d",
-            "title": "TrueEarnings\u00ae Card from Costco and American Express",
-            "original_title": "TrueEarnings\u00ae Card from Costco and American Express",
+            "title": "TrueEarnings Card from Costco and American Express",
+            "original_title": "TrueEarnings Card from Costco and American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www304.americanexpress.com/credit-card/costco-american-express",
@@ -61936,12 +62005,12 @@ data = {
             }
         }
     ],
-    "Blue Netspend\u00ae Visa\u00ae Prepaid Card": [
+    "Blue Netspend Visa Prepaid Card": [
         114,
         {
             "_id": "5e690b260b077d5830cadb3a",
-            "title": "Blue Netspend\u00ae Visa\u00ae Prepaid Card",
-            "original_title": "Blue Netspend\u00ae Visa\u00ae Prepaid Card",
+            "title": "Blue Netspend Visa Prepaid Card",
+            "original_title": "Blue Netspend Visa Prepaid Card",
             "fee": 0,
             "url": "",
             "foreign_fee": false,
@@ -61954,7 +62023,7 @@ data = {
                     "title": "Use the Netspend Mobile App to manage your Card Account on the go and enroll to get text messages or email alerts (Message & data rates may apply)."
                 },
                 {
-                    "title": "See additional Netspend\u00ae Visa\u00ae Prepaid Card details"
+                    "title": "See additional Netspend Visa Prepaid Card details"
                 },
                 {
                     "title": "No late fees or interest charges because this is not a credit card."
@@ -61969,7 +62038,7 @@ data = {
                     "title": "Card use is subject to activation and ID verification. Terms and Costs apply."
                 },
                 {
-                    "title": "Card issued by MetaBank\u00ae, Member FDIC.  Card may be used everywhere Visa debit card is accepted."
+                    "title": "Card issued by MetaBank, Member FDIC.  Card may be used everywhere Visa debit card is accepted."
                 }
             ],
             "earnings": [
@@ -62182,7 +62251,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 5 ThankYou\u00ae Points for every $1 you spend at restaurants and on entertainment."
+                    "title": "Earn 5 ThankYou Points for every $1 you spend at restaurants and on entertainment."
                 },
                 {
                     "title": "Earn 1 point per $1 on all other purchases."
@@ -62400,12 +62469,12 @@ data = {
             }
         }
     ],
-    "SUNY Oneonta Visa\u00ae Signature Card": [
+    "SUNY Oneonta Visa Signature Card": [
         116,
         {
             "_id": "5e690b260b077d5830cae2f8",
-            "title": "SUNY Oneonta Visa\u00ae Signature Card",
-            "original_title": "SUNY Oneonta Visa\u00ae Signature Card",
+            "title": "SUNY Oneonta Visa Signature Card",
+            "original_title": "SUNY Oneonta Visa Signature Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -62471,12 +62540,12 @@ data = {
             }
         }
     ],
-    "Total Visa\u00ae Patriotic Card": [
+    "Total Visa Patriotic Card": [
         116,
         {
             "_id": "5e690b260b077d5830cae34b",
-            "title": "Total Visa\u00ae Patriotic Card",
-            "original_title": "Total Visa\u00ae Patriotic Card",
+            "title": "Total Visa Patriotic Card",
+            "original_title": "Total Visa Patriotic Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -62504,7 +62573,7 @@ data = {
                     "title": "Checking Account Required"
                 },
                 {
-                    "title": "A genuine Visa\u00ae card accepted by merchants nationwide across the USA and online"
+                    "title": "A genuine Visa card accepted by merchants nationwide across the USA and online"
                 }
             ],
             "earnings": [
@@ -62566,12 +62635,12 @@ data = {
             }
         }
     ],
-    "Rutgers University Visa\u00ae Platinum Card": [
+    "Rutgers University Visa Platinum Card": [
         116,
         {
             "_id": "5e690b260b077d5830cae1ef",
-            "title": "Rutgers University Visa\u00ae Platinum Card",
-            "original_title": "Rutgers University Visa\u00ae Platinum Card",
+            "title": "Rutgers University Visa Platinum Card",
+            "original_title": "Rutgers University Visa Platinum Card",
             "fee": 0,
             "url": "https://applications.usbank.com/oad/apply/begin?productId=20",
             "foreign_fee": true,
@@ -62612,13 +62681,13 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 1 ThankYou\u00ae Point for every $1 you spend."
+                    "title": "Earn 1 ThankYou Point for every $1 you spend."
                 }
             ],
             "earnings": [
                 {
                     "points": 1,
-                    "description": "Earn 1 ThankYou\u00ae Point for every $1 you spend.",
+                    "description": "Earn 1 ThankYou Point for every $1 you spend.",
                     "category": 7
                 }
             ],
@@ -62717,12 +62786,12 @@ data = {
             }
         }
     ],
-    "M&T Bank Visa\u00ae Business Bonus Rewards Card": [
+    "M&T Bank Visa Business Bonus Rewards Card": [
         116,
         {
             "_id": "5e690b260b077d5830cadec1",
-            "title": "M&T Bank Visa\u00ae Business Bonus Rewards Card",
-            "original_title": "M&T Bank Visa\u00ae Business Bonus Rewards Card",
+            "title": "M&T Bank Visa Business Bonus Rewards Card",
+            "original_title": "M&T Bank Visa Business Bonus Rewards Card",
             "fee": 0,
             "url": "https://online1.elancard.com/oad/begin?locationCode=4666",
             "foreign_fee": true,
@@ -62935,7 +63004,7 @@ data = {
                     "title": "No minimum balance requirements; no overdraft charges; and no setup, annual, or monthly fees."
                 },
                 {
-                    "title": "Get cash when you need it from GoBank\u2019s network of ATMs. Fees apply with out-of-network ATMs."
+                    "title": "Get cash when you need it from GoBanks network of ATMs. Fees apply with out-of-network ATMs."
                 },
                 {
                     "title": "Get a 15% discount on select services at Jiffy Lube applied when you show the technician your Uber Visa Debit Card at checkout."
@@ -63017,12 +63086,12 @@ data = {
             }
         }
     ],
-    "RateWise MasterCard\u00ae": [
+    "RateWise MasterCard": [
         117,
         {
             "_id": "5e690b260b077d5830cae1ba",
-            "title": "RateWise MasterCard\u00ae",
-            "original_title": "RateWise MasterCard\u00ae",
+            "title": "RateWise MasterCard",
+            "original_title": "RateWise MasterCard",
             "fee": 0,
             "url": "https://www.quorumfcu.org/sites/default/files/files/Ratewise_MasterCard_ASD.pdf",
             "foreign_fee": true,
@@ -63090,7 +63159,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadbdd",
             "title": "Capital One QuicksilverOne Cash Rewards Credit Card",
-            "original_title": "Capital One\u00ae QuicksilverOne\u00ae Cash Rewards Credit Card",
+            "original_title": "Capital One QuicksilverOne Cash Rewards Credit Card",
             "fee": 39,
             "url": "https://www.capitalone.com/credit-cards/quicksilverone/",
             "foreign_fee": false,
@@ -63166,17 +63235,17 @@ data = {
         {
             "_id": "5e690b260b077d5830cadc6e",
             "title": "Citi Diamond Preferred Card",
-            "original_title": "Citi\u00ae Diamond Preferred\u00ae Card",
+            "original_title": "Citi Diamond Preferred Card",
             "fee": 0,
             "url": "https://www.citicards.com/cards/credit/application/flow.action?app=UNSOL&sc=4DNZ1DE4&m=615DTEST21W&B=V&ID=3000&uc=D46&t=t",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Get free access to your FICO\u00ae score online."
+                    "title": "Get free access to your FICO score online."
                 },
                 {
-                    "title": "Citi\u00ae Easy Deals get what you want for less. Earn Citi Easy Deals Points for the purchases you make with your card."
+                    "title": "Citi Easy Deals get what you want for less. Earn Citi Easy Deals Points for the purchases you make with your card."
                 }
             ],
             "earnings": [
@@ -63238,12 +63307,12 @@ data = {
             }
         }
     ],
-    "National Wild Turkey Federation Rewards Visa\u00ae": [
+    "National Wild Turkey Federation Rewards Visa": [
         117,
         {
             "_id": "5e690b260b077d5830cadf4c",
-            "title": "National Wild Turkey Federation Rewards Visa\u00ae",
-            "original_title": "National Wild Turkey Federation Rewards Visa\u00ae",
+            "title": "National Wild Turkey Federation Rewards Visa",
+            "original_title": "National Wild Turkey Federation Rewards Visa",
             "fee": 0,
             "url": "http://www.commercebank.com/NWTF",
             "foreign_fee": true,
@@ -63632,12 +63701,12 @@ data = {
             }
         }
     ],
-    "AeroMexico Visa Signature\u00ae Card": [
+    "AeroMexico Visa Signature Card": [
         118,
         {
             "_id": "5e690b260b077d5830cada4e",
-            "title": "AeroMexico Visa Signature\u00ae Card",
-            "original_title": "AeroMexico Visa Signature\u00ae Card",
+            "title": "AeroMexico Visa Signature Card",
+            "original_title": "AeroMexico Visa Signature Card",
             "fee": 80,
             "url": "https://www.usbank.com/credit-cards/aeromexico-visa-signature-credit-card.html",
             "foreign_fee": true,
@@ -63756,12 +63825,12 @@ data = {
             }
         }
     ],
-    "The Choice Privileges\u00ae Visa\u00ae Card": [
+    "The Choice Privileges Visa Card": [
         119,
         {
             "_id": "5e690b260b077d5830cae325",
-            "title": "The Choice Privileges\u00ae Visa\u00ae Card",
-            "original_title": "The Choice Privileges\u00ae Visa\u00ae Card",
+            "title": "The Choice Privileges Visa Card",
+            "original_title": "The Choice Privileges Visa Card",
             "fee": 0,
             "url": "http://www.choicehotels.com/en/hotelvisacreditcard",
             "foreign_fee": true,
@@ -63771,7 +63840,7 @@ data = {
                     "title": "Earn 2 points per eligible $1 spent on everyday purchases."
                 },
                 {
-                    "title": "Earn 15 points per eligible $1 spent at over 4,200 Choice Privileges\u00ae locations."
+                    "title": "Earn 15 points per eligible $1 spent at over 4,200 Choice Privileges locations."
                 }
             ],
             "earnings": [],
@@ -63829,12 +63898,12 @@ data = {
             }
         }
     ],
-    "Army MWR MasterCard\u00ae": [
+    "Army MWR MasterCard": [
         119,
         {
             "_id": "5e690b260b077d5830cadac7",
-            "title": "Army MWR MasterCard\u00ae",
-            "original_title": "Army MWR MasterCard\u00ae",
+            "title": "Army MWR MasterCard",
+            "original_title": "Army MWR MasterCard",
             "fee": 0,
             "url": "https://www.chase.com/online/military/military-credit-cards.htm#army_cards_wrapper",
             "foreign_fee": true,
@@ -63865,12 +63934,12 @@ data = {
             }
         }
     ],
-    "Blue Sky Preferred\u00ae Card from American Express": [
+    "Blue Sky Preferred Card from American Express": [
         119,
         {
             "_id": "5e690b260b077d5830cadb3d",
-            "title": "Blue Sky Preferred\u00ae Card from American Express",
-            "original_title": "Blue Sky Preferred\u00ae Card from American Express",
+            "title": "Blue Sky Preferred Card from American Express",
+            "original_title": "Blue Sky Preferred Card from American Express",
             "nickname": "AMEX",
             "fee": 75,
             "url": "https://www.americanexpress.com/us/content/cardmember-agreements/blue-sky-preferred.html",
@@ -63937,12 +64006,12 @@ data = {
             }
         }
     ],
-    "American Express\u00ae Card with MyBankoh Rewards": [
+    "American Express Card with MyBankoh Rewards": [
         119,
         {
             "_id": "5e690b260b077d5830cada9f",
-            "title": "American Express\u00ae Card with MyBankoh Rewards",
-            "original_title": "American Express\u00ae Card with MyBankoh Rewards",
+            "title": "American Express Card with MyBankoh Rewards",
+            "original_title": "American Express Card with MyBankoh Rewards",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.boh.com/personal/banking-products/credit-cards/bank-of-hawaii-american-express-card-mybankoh-rewards.asp",
@@ -63972,25 +64041,25 @@ data = {
             }
         }
     ],
-    "Ameriprise\u00ae Visa Signature\u00ae": [
+    "Ameriprise Visa Signature": [
         119,
         {
             "_id": "5e690b260b077d5830cadab3",
-            "title": "Ameriprise\u00ae Visa Signature\u00ae",
-            "original_title": "Ameriprise\u00ae Visa Signature\u00ae",
+            "title": "Ameriprise Visa Signature",
+            "original_title": "Ameriprise Visa Signature",
             "fee": 0,
             "url": "https://www.ameriprise.com/products-services/cash-cards-lending/credit-cards/visa-signature/",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 1 Rewards Point for every $1 you spend in eligible net purchases; receive a 25% bonus by redeeming points for cash back into eligible Ameriprise Financial accounts or for an Ameriprise financial planning certificate \u2014 an effective 1.25% cash back per eligible net $1 spent on your card"
+                    "title": "Earn 1 Rewards Point for every $1 you spend in eligible net purchases; receive a 25% bonus by redeeming points for cash back into eligible Ameriprise Financial accounts or for an Ameriprise financial planning certificate  an effective 1.25% cash back per eligible net $1 spent on your card"
                 }
             ],
             "earnings": [
                 {
                     "points": 1.25,
-                    "description": "Earn 1 Rewards Point for every $1 you spend in eligible net purchases; receive a 25% bonus by redeeming points for cash back into eligible Ameriprise Financial accounts or for an Ameriprise financial planning certificate \u2014 an effective 1.25% cash back per eligible net $1 spent on your card",
+                    "description": "Earn 1 Rewards Point for every $1 you spend in eligible net purchases; receive a 25% bonus by redeeming points for cash back into eligible Ameriprise Financial accounts or for an Ameriprise financial planning certificate  an effective 1.25% cash back per eligible net $1 spent on your card",
                     "category": 7
                 }
             ],
@@ -64012,12 +64081,12 @@ data = {
             }
         }
     ],
-    "NDSU Visa\u00ae Rewards Credit Card": [
+    "NDSU Visa Rewards Credit Card": [
         119,
         {
             "_id": "5e690b260b077d5830cadf56",
-            "title": "NDSU Visa\u00ae Rewards Credit Card",
-            "original_title": "NDSU Visa\u00ae Rewards Credit Card",
+            "title": "NDSU Visa Rewards Credit Card",
+            "original_title": "NDSU Visa Rewards Credit Card",
             "fee": 0,
             "url": "http://www.commercebank.com/affinity-agent-cards/ndsu",
             "foreign_fee": true,
@@ -64365,12 +64434,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Business Bonus Rewards Credit Card": [
+    "Visa Business Bonus Rewards Credit Card": [
         120,
         {
             "_id": "5e690b260b077d5830cae4f2",
-            "title": "Visa\u00ae Business Bonus Rewards Credit Card",
-            "original_title": "Visa\u00ae Business Bonus Rewards Credit Card",
+            "title": "Visa Business Bonus Rewards Credit Card",
+            "original_title": "Visa Business Bonus Rewards Credit Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -64635,12 +64704,12 @@ data = {
             }
         }
     ],
-    "Visa Signature\u00ae Credit Card with MyBankoh Rewards": [
+    "Visa Signature Credit Card with MyBankoh Rewards": [
         121,
         {
             "_id": "5e690b260b077d5830cae4df",
-            "title": "Visa Signature\u00ae Credit Card with MyBankoh Rewards",
-            "original_title": "Visa Signature\u00ae Credit Card with MyBankoh Rewards",
+            "title": "Visa Signature Credit Card with MyBankoh Rewards",
+            "original_title": "Visa Signature Credit Card with MyBankoh Rewards",
             "fee": 0,
             "url": "https://www.boh.com/personal/banking-products/credit-cards/bank-of-hawaii-visa-signature-credit-card-mybankoh-rewards.asp",
             "foreign_fee": true,
@@ -64748,7 +64817,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadb36",
             "title": "Delta SkyMiles Blue American Express  Card",
-            "original_title": "Blue Delta SkyMiles\u00ae Credit Card",
+            "original_title": "Blue Delta SkyMiles Credit Card",
             "nickname": "AMEX, AMEX",
             "fee": 0,
             "url": "https://www.americanexpress.com/us/credit-cards/card/delta-blue/",
@@ -64985,12 +65054,12 @@ data = {
             }
         }
     ],
-    "BankAmericard Cash Rewards\u2122 Credit Card": [
+    "BankAmericard Cash Rewards Credit Card": [
         121,
         {
             "_id": "5e690b260b077d5830cadaf4",
-            "title": "BankAmericard Cash Rewards\u2122 Credit Card",
-            "original_title": "BankAmericard Cash Rewards\u2122 Credit Card",
+            "title": "BankAmericard Cash Rewards Credit Card",
+            "original_title": "BankAmericard Cash Rewards Credit Card",
             "fee": 0,
             "url": "https://www.bankofamerica.com/credit-cards/products/cash-back-credit-card.go",
             "foreign_fee": true,
@@ -65072,19 +65141,19 @@ data = {
             }
         }
     ],
-    "Jeep\u00ae MasterCard\u00ae": [
+    "Jeep MasterCard": [
         121,
         {
             "_id": "5e690b260b077d5830cade8c",
-            "title": "Jeep\u00ae MasterCard\u00ae",
-            "original_title": "Jeep\u00ae MasterCard\u00ae",
+            "title": "Jeep MasterCard",
+            "original_title": "Jeep MasterCard",
             "fee": 0,
             "url": "https://www.firstbankcard.com/jeep/site/personal/personal.fhtml",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "3 points per $1 spent on qualifying purchases made at Chrysler Group Dealerships \u2013 includes parts, repairs, maintenance and accessories."
+                    "title": "3 points per $1 spent on qualifying purchases made at Chrysler Group Dealerships  includes parts, repairs, maintenance and accessories."
                 },
                 {
                     "title": "2 points per $1 spent on qualifying travel purchases."
@@ -65112,12 +65181,12 @@ data = {
             }
         }
     ],
-    "Netspend\u00ae Visa\u00ae Prepaid Card": [
+    "Netspend Visa Prepaid Card": [
         122,
         {
             "_id": "5e690b260b077d5830cadf5d",
-            "title": "Netspend\u00ae Visa\u00ae Prepaid Card",
-            "original_title": "Netspend\u00ae Visa\u00ae Prepaid Card",
+            "title": "Netspend Visa Prepaid Card",
+            "original_title": "Netspend Visa Prepaid Card",
             "fee": 0,
             "url": "",
             "foreign_fee": false,
@@ -65139,7 +65208,7 @@ data = {
                     "title": "Get your tax refund direct deposited to your account and no more waiting in line to cash your check!"
                 },
                 {
-                    "title": "Card issued by MetaBank\u00ae, Member FDIC. Card may be used everywhere Visa Debit cards are accepted. \"Apply Now\" for full details."
+                    "title": "Card issued by MetaBank, Member FDIC. Card may be used everywhere Visa Debit cards are accepted. \"Apply Now\" for full details."
                 }
             ],
             "earnings": [
@@ -65452,12 +65521,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Business Bonus Rewards Plus Credit Card": [
+    "Visa Business Bonus Rewards Plus Credit Card": [
         122,
         {
             "_id": "5e690b260b077d5830cae500",
-            "title": "Visa\u00ae Business Bonus Rewards Plus Credit Card",
-            "original_title": "Visa\u00ae Business Bonus Rewards Plus Credit Card",
+            "title": "Visa Business Bonus Rewards Plus Credit Card",
+            "original_title": "Visa Business Bonus Rewards Plus Credit Card",
             "fee": 50,
             "url": "",
             "foreign_fee": true,
@@ -65754,12 +65823,12 @@ data = {
             }
         }
     ],
-    "USAA Cash Rewards\u00ae World MasterCard\u00ae with Chip Technology": [
+    "USAA Cash Rewards World MasterCard with Chip Technology": [
         123,
         {
             "_id": "5e690b260b077d5830cae3c4",
-            "title": "USAA Cash Rewards\u00ae World MasterCard\u00ae with Chip Technology",
-            "original_title": "USAA Cash Rewards\u00ae World MasterCard\u00ae with Chip Technology",
+            "title": "USAA Cash Rewards World MasterCard with Chip Technology",
+            "original_title": "USAA Cash Rewards World MasterCard with Chip Technology",
             "fee": 0,
             "url": "https://www.usaa.com/inet/pages/bank_cc_cash_rewards_mastercard_with_chip_card_technology",
             "foreign_fee": true,
@@ -65856,12 +65925,12 @@ data = {
             }
         }
     ],
-    "Sallie Mae MasterCard\u00ae": [
+    "Sallie Mae MasterCard": [
         123,
         {
             "_id": "5e690b260b077d5830cae1f2",
-            "title": "Sallie Mae MasterCard\u00ae",
-            "original_title": "Sallie Mae MasterCard\u00ae",
+            "title": "Sallie Mae MasterCard",
+            "original_title": "Sallie Mae MasterCard",
             "fee": 0,
             "url": "https://www.salliemae.com/credit-cards/sallie-mae-card/",
             "foreign_fee": true,
@@ -66304,7 +66373,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadbd7",
             "title": "Capital One Platinum Credit Card",
-            "original_title": "Capital One\u00ae Platinum Credit Card",
+            "original_title": "Capital One Platinum Credit Card",
             "fee": 0,
             "url": "https://www.capitalone.com/credit-cards/platinum/",
             "foreign_fee": false,
@@ -66414,12 +66483,12 @@ data = {
             }
         }
     ],
-    "Playstation\u00ae Card from Capital One\u00ae": [
+    "Playstation Card from Capital One": [
         124,
         {
             "_id": "5e690b260b077d5830cae166",
-            "title": "Playstation\u00ae Card from Capital One\u00ae",
-            "original_title": "Playstation\u00ae Card from Capital One\u00ae",
+            "title": "Playstation Card from Capital One",
+            "original_title": "Playstation Card from Capital One",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -66429,10 +66498,10 @@ data = {
                     "title": "3 points per $1 spent on quick service restaurants, movie theatres & your mobile phone bill."
                 },
                 {
-                    "title": "3 points per $1 spent on Playstation\u00ae and Sony purchases at Sony Store and store.sony.com."
+                    "title": "3 points per $1 spent on Playstation and Sony purchases at Sony Store and store.sony.com."
                 },
                 {
-                    "title": "10 points per $1 spent on all Playstation\u00ae Store purchases."
+                    "title": "10 points per $1 spent on all Playstation Store purchases."
                 },
                 {
                     "title": "1 point per $1 spent on all other purchases."
@@ -66515,13 +66584,13 @@ data = {
                     "title": "No annual fee."
                 },
                 {
-                    "title": "For eligible products purchased entirely with your Card, Extended Warranty doubles the original manufacturer\u2019s (or U.S. store brand) warranty of one year or less."
+                    "title": "For eligible products purchased entirely with your Card, Extended Warranty doubles the original manufacturers (or U.S. store brand) warranty of one year or less."
                 },
                 {
                     "title": "Earn 1.5% cash back on every purchase."
                 },
                 {
-                    "title": "Be among the first to buy tickets \u2014to some of the best concerts, Broadway shows and sporting events in town."
+                    "title": "Be among the first to buy tickets to some of the best concerts, Broadway shows and sporting events in town."
                 }
             ],
             "earnings": [
@@ -66778,11 +66847,11 @@ data = {
             }
         }
     ],
-    "Total Visa\u00ae Unsecured Credit Card": [
+    "Total Visa Unsecured Credit Card": [
         125,
         {
             "_id": "5e690b260b077d5830cae34a",
-            "title": "Total Visa\u00ae Unsecured Credit Card",
+            "title": "Total Visa Unsecured Credit Card",
             "original_title": "Total Visa",
             "fee": 48,
             "url": "",
@@ -66811,7 +66880,7 @@ data = {
                     "title": "Checking Account Required"
                 },
                 {
-                    "title": "A genuine Visa\u00ae card accepted by merchants nationwide across the USA and online"
+                    "title": "A genuine Visa card accepted by merchants nationwide across the USA and online"
                 }
             ],
             "earnings": [],
@@ -66879,19 +66948,19 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Use your Annual Dividend for REI adventure travel and we\u2019ll reduce the trip cost by 50% of the dividend amount you use"
+                    "title": "Use your Annual Dividend for REI adventure travel and well reduce the trip cost by 50% of the dividend amount you use"
                 },
                 {
                     "title": "The 5%, 2% and 1% earned with your card is on top of your typical 10% member dividend."
                 },
                 {
-                    "title": "Pay your cellphone bill with your card and your cellphone is insured\u2014for free"
+                    "title": "Pay your cellphone bill with your card and your cellphone is insuredfor free"
                 },
                 {
                     "title": "No annual fee"
                 },
                 {
-                    "title": "Apply for the REI Co-op World Elite Mastercard\u00ae, and if approved, make a purchase within 60 days and you\u2019ll earn a $100 REI gift card."
+                    "title": "Apply for the REI Co-op World Elite Mastercard, and if approved, make a purchase within 60 days and youll earn a $100 REI gift card."
                 },
                 {
                     "title": "5% back on purchases at REI"
@@ -66928,12 +66997,12 @@ data = {
             }
         }
     ],
-    "UBS Preferred Visa Signature\u00ae Card": [
+    "UBS Preferred Visa Signature Card": [
         125,
         {
             "_id": "5e690b260b077d5830cae371",
-            "title": "UBS Preferred Visa Signature\u00ae Card",
-            "original_title": "UBS Preferred Visa Signature\u00ae Card",
+            "title": "UBS Preferred Visa Signature Card",
+            "original_title": "UBS Preferred Visa Signature Card",
             "fee": 495,
             "url": "http://financialservicesinc.ubs.com/cards/#/preferredcard/",
             "foreign_fee": true,
@@ -67121,12 +67190,12 @@ data = {
             }
         }
     ],
-    "The College of New Jersey Visa\u00ae Signature Card": [
+    "The College of New Jersey Visa Signature Card": [
         125,
         {
             "_id": "5e690b260b077d5830cae326",
-            "title": "The College of New Jersey Visa\u00ae Signature Card",
-            "original_title": "The College of New Jersey Visa\u00ae Signature Card",
+            "title": "The College of New Jersey Visa Signature Card",
+            "original_title": "The College of New Jersey Visa Signature Card",
             "fee": 0,
             "url": "https://applications.usbank.com/oad/apply/begin?productId=05&sourceCode=72026",
             "foreign_fee": true,
@@ -67250,12 +67319,12 @@ data = {
             }
         }
     ],
-    "SavingStar Secured American Express\u00ae": [
+    "SavingStar Secured American Express": [
         125,
         {
             "_id": "5e690b260b077d5830cae202",
-            "title": "SavingStar Secured American Express\u00ae",
-            "original_title": "SavingStar Secured American Express\u00ae",
+            "title": "SavingStar Secured American Express",
+            "original_title": "SavingStar Secured American Express",
             "nickname": "AMEX",
             "fee": 25,
             "url": "/cardbase/secured-credit-cards",
@@ -67500,12 +67569,12 @@ data = {
             }
         }
     ],
-    "Citi Chairman\u00ae American Express\u00ae Card": [
+    "Citi Chairman American Express Card": [
         126,
         {
             "_id": "5e690b260b077d5830cadc4d",
-            "title": "Citi Chairman\u00ae American Express\u00ae Card",
-            "original_title": "Citi Chairman\u00ae American Express\u00ae Card",
+            "title": "Citi Chairman American Express Card",
+            "original_title": "Citi Chairman American Express Card",
             "nickname": "AMEX",
             "fee": 500,
             "url": "",
@@ -67572,12 +67641,12 @@ data = {
             }
         }
     ],
-    "M&T Visa\u00ae Business Card": [
+    "M&T Visa Business Card": [
         126,
         {
             "_id": "5e690b260b077d5830cadec6",
-            "title": "M&T Visa\u00ae Business Card",
-            "original_title": "M&T Visa\u00ae Business Card",
+            "title": "M&T Visa Business Card",
+            "original_title": "M&T Visa Business Card",
             "fee": 0,
             "url": "https://www.mtb.com/business/makingyourpayments/Pages/VISABusinessPlatinumCard.aspx",
             "foreign_fee": true,
@@ -67662,12 +67731,12 @@ data = {
             }
         }
     ],
-    "USAA Cashback Rewards Plus American Express\u00ae": [
+    "USAA Cashback Rewards Plus American Express": [
         126,
         {
             "_id": "5e690b260b077d5830cae3c5",
-            "title": "USAA Cashback Rewards Plus American Express\u00ae",
-            "original_title": "USAA Cashback Rewards Plus American Express\u00ae",
+            "title": "USAA Cashback Rewards Plus American Express",
+            "original_title": "USAA Cashback Rewards Plus American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.usaa.com/inet/pages/bank_cc_cashback_rewards_plus_american_express",
@@ -67719,12 +67788,12 @@ data = {
             }
         }
     ],
-    "Barclaycard Arrival\u2122 World MasterCard\u00ae": [
+    "Barclaycard Arrival World MasterCard": [
         127,
         {
             "_id": "5e690b260b077d5830cadb08",
-            "title": "Barclaycard Arrival\u2122 World MasterCard\u00ae",
-            "original_title": "Barclaycard Arrival\u2122 World MasterCard\u00ae",
+            "title": "Barclaycard Arrival World MasterCard",
+            "original_title": "Barclaycard Arrival World MasterCard",
             "fee": 0,
             "url": "http://www.findmybarclaycard.com/barclaycard-credit-cards/arrival-travel",
             "foreign_fee": false,
@@ -68031,12 +68100,12 @@ data = {
             }
         }
     ],
-    "Bass Pro Shops\u00ae Outdoor Rewards\u2120 Signature": [
+    "Bass Pro Shops Outdoor Rewards Signature": [
         127,
         {
             "_id": "5e690b260b077d5830cadb14",
-            "title": "Bass Pro Shops\u00ae Outdoor Rewards\u2120 Signature",
-            "original_title": "Bass Pro Shops\u00ae Outdoor Rewards\u2120 Signature",
+            "title": "Bass Pro Shops Outdoor Rewards Signature",
+            "original_title": "Bass Pro Shops Outdoor Rewards Signature",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -68254,25 +68323,25 @@ data = {
             }
         }
     ],
-    "AAdvantage\u00ae Aviator Silver World Elite\u2122 MasterCard\u00ae": [
+    "AAdvantage Aviator Silver World Elite MasterCard": [
         128,
         {
             "_id": "5e690b260b077d5830cada3a",
-            "title": "AAdvantage\u00ae Aviator Silver World Elite\u2122 MasterCard\u00ae",
-            "original_title": "AAdvantage\u00ae Aviator Silver World Elite\u2122 MasterCard\u00ae",
+            "title": "AAdvantage Aviator Silver World Elite MasterCard",
+            "original_title": "AAdvantage Aviator Silver World Elite MasterCard",
             "fee": 195,
             "url": "https://www.barclaycardus.com/servicing/silver",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 3 AAdvantage\u00ae miles per dollar spent on US Airways and American Airlines purchases"
+                    "title": "Earn 3 AAdvantage miles per dollar spent on US Airways and American Airlines purchases"
                 },
                 {
-                    "title": "Earn 2 AAdvantage\u00ae miles per dollar spent at hotels and car rental agencies"
+                    "title": "Earn 2 AAdvantage miles per dollar spent at hotels and car rental agencies"
                 },
                 {
-                    "title": "Earn 1 AAdvantage\u00ae mile per dollar spent on all other purchases"
+                    "title": "Earn 1 AAdvantage mile per dollar spent on all other purchases"
                 }
             ],
             "earnings": [],
@@ -68294,12 +68363,12 @@ data = {
             }
         }
     ],
-    "Cash Back World MasterCard\u00ae": [
+    "Cash Back World MasterCard": [
         128,
         {
             "_id": "5e690b260b077d5830cadbf5",
-            "title": "Cash Back World MasterCard\u00ae",
-            "original_title": "Cash Back World MasterCard\u00ae",
+            "title": "Cash Back World MasterCard",
+            "original_title": "Cash Back World MasterCard",
             "fee": 0,
             "url": "https://www.quorumfcu.org/sites/default/files/files/World_MasterCard_ASD.pdf",
             "foreign_fee": true,
@@ -68508,7 +68577,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadbe0",
             "title": "Capital One Spark Cash Select for Business",
-            "original_title": "Capital One\u00ae Spark\u00ae Cash Select for Business",
+            "original_title": "Capital One Spark Cash Select for Business",
             "fee": 0,
             "url": "http://www.capitalone.com/credit-cards/business/spark-cash-select/",
             "foreign_fee": false,
@@ -68585,12 +68654,12 @@ data = {
             }
         }
     ],
-    "SimplyCash\u00ae Plus Business Card from American Express": [
+    "SimplyCash Plus Business Card from American Express": [
         128,
         {
             "_id": "5e690b260b077d5830cae291",
-            "title": "SimplyCash\u00ae Plus Business Card from American Express",
-            "original_title": "SimplyCash\u00ae Plus Business Card from American Express",
+            "title": "SimplyCash Plus Business Card from American Express",
+            "original_title": "SimplyCash Plus Business Card from American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.americanexpress.com/us/small-business/credit-cards/simply-cash-business",
@@ -68697,7 +68766,7 @@ data = {
                     "title": "No Pre-Set Spending Limit on Purchases"
                 },
                 {
-                    "title": "New American Express\u00ae AeroplanPlus\u00ae* Card Cardmembers, earn 5,000 Bonus Aeroplan\u00ae* Miles after your first use of an approved Card"
+                    "title": "New American Express AeroplanPlus* Card Cardmembers, earn 5,000 Bonus Aeroplan* Miles after your first use of an approved Card"
                 },
                 {
                     "title": "Earn Aeroplan Miles twice at over 150 Aeroplan Partners"
@@ -68731,12 +68800,12 @@ data = {
             }
         }
     ],
-    "Business Edition\u00ae Visa\u00ae Card with Absolute Rewards": [
+    "Business Edition Visa Card with Absolute Rewards": [
         128,
         {
             "_id": "5e690b260b077d5830cadb9e",
-            "title": "Business Edition\u00ae Visa\u00ae Card with Absolute Rewards",
-            "original_title": "Business Edition\u00ae Visa\u00ae Card with Absolute Rewards",
+            "title": "Business Edition Visa Card with Absolute Rewards",
+            "original_title": "Business Edition Visa Card with Absolute Rewards",
             "fee": 0,
             "url": "https://www.fnbomaha.com/site/small_business/products/visa/visa_bused_rewards.fhtml",
             "foreign_fee": true,
@@ -68771,12 +68840,12 @@ data = {
             }
         }
     ],
-    "The Hawaiian Airlines\u00ae Business MasterCard\u00ae from Barclays": [
+    "The Hawaiian Airlines Business MasterCard from Barclays": [
         129,
         {
             "_id": "5e690b260b077d5830cae328",
-            "title": "The Hawaiian Airlines\u00ae Business MasterCard\u00ae from Barclays",
-            "original_title": "The Hawaiian Airlines\u00ae Business MasterCard\u00ae from Barclays",
+            "title": "The Hawaiian Airlines Business MasterCard from Barclays",
+            "original_title": "The Hawaiian Airlines Business MasterCard from Barclays",
             "fee": 89,
             "url": "http://www.hawaiianairlines.com/hawaiianmiles/pages/ha-credit-card-business.aspx",
             "foreign_fee": false,
@@ -68822,12 +68891,12 @@ data = {
             }
         }
     ],
-    "Fidelity\u00ae Investment Rewards American Express\u00ae Card": [
+    "Fidelity Investment Rewards American Express Card": [
         129,
         {
             "_id": "5e690b260b077d5830caddaa",
-            "title": "Fidelity\u00ae Investment Rewards American Express\u00ae Card",
-            "original_title": "Fidelity\u00ae Investment Rewards American Express\u00ae Card",
+            "title": "Fidelity Investment Rewards American Express Card",
+            "original_title": "Fidelity Investment Rewards American Express Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.applyonlinenow.com/USCCapp/Ctl/entry?sc=VACAUL#b",
@@ -69120,12 +69189,12 @@ data = {
             }
         }
     ],
-    "FIRST Travel Visa\u00ae Platinum": [
+    "FIRST Travel Visa Platinum": [
         129,
         {
             "_id": "5e690b260b077d5830caddbf",
-            "title": "FIRST Travel Visa\u00ae Platinum",
-            "original_title": "FIRST Travel Visa\u00ae Platinum",
+            "title": "FIRST Travel Visa Platinum",
+            "original_title": "FIRST Travel Visa Platinum",
             "fee": 0,
             "url": "https://www.firsttennessee.com/Personal/Banking/Credit-Cards/First-Travel-Visa-Platinum",
             "foreign_fee": true,
@@ -69313,12 +69382,12 @@ data = {
             }
         }
     ],
-    "M&T Bank Visa\u00ae Business Bonus Rewards Plus Card": [
+    "M&T Bank Visa Business Bonus Rewards Plus Card": [
         129,
         {
             "_id": "5e690b260b077d5830cadec2",
-            "title": "M&T Bank Visa\u00ae Business Bonus Rewards Plus Card",
-            "original_title": "M&T Bank Visa\u00ae Business Bonus Rewards Plus Card",
+            "title": "M&T Bank Visa Business Bonus Rewards Plus Card",
+            "original_title": "M&T Bank Visa Business Bonus Rewards Plus Card",
             "fee": 50,
             "url": "https://www.mtb.com/personal/loanscredit/creditcard/Pages/CreditCards.aspx",
             "foreign_fee": true,
@@ -69452,12 +69521,12 @@ data = {
             }
         }
     ],
-    "FlexPerks\u00ae Reserve Visa Signature\u00ae Card": [
+    "FlexPerks Reserve Visa Signature Card": [
         130,
         {
             "_id": "5e690b260b077d5830caddcc",
-            "title": "FlexPerks\u00ae Reserve Visa Signature\u00ae Card",
-            "original_title": "FlexPerks\u00ae Reserve Visa Signature\u00ae Card",
+            "title": "FlexPerks Reserve Visa Signature Card",
+            "original_title": "FlexPerks Reserve Visa Signature Card",
             "fee": 299,
             "url": "https://reserve.usbank.com/flexperks",
             "foreign_fee": true,
@@ -69557,12 +69626,12 @@ data = {
             }
         }
     ],
-    "Pinnacle Platinum MasterCard\u00ae": [
+    "Pinnacle Platinum MasterCard": [
         130,
         {
             "_id": "5e690b260b077d5830cadfd5",
-            "title": "Pinnacle Platinum MasterCard\u00ae",
-            "original_title": "Pinnacle Platinum MasterCard\u00ae",
+            "title": "Pinnacle Platinum MasterCard",
+            "original_title": "Pinnacle Platinum MasterCard",
             "fee": 50,
             "url": "https://www.firstniagara.com/Bank/Personal/Credit_Cards/Rewards_Card.aspx",
             "foreign_fee": true,
@@ -69591,12 +69660,12 @@ data = {
             }
         }
     ],
-    "American Express\u00ae Corporate Purchasing Card": [
+    "American Express Corporate Purchasing Card": [
         130,
         {
             "_id": "5e690b260b077d5830cadaa4",
-            "title": "American Express\u00ae Corporate Purchasing Card",
-            "original_title": "American Express\u00ae Corporate Purchasing Card",
+            "title": "American Express Corporate Purchasing Card",
+            "original_title": "American Express Corporate Purchasing Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://business.americanexpress.com/us/supplier-payments/corporate-purchasing-card",
@@ -69626,12 +69695,12 @@ data = {
             }
         }
     ],
-    "Secured MasterCard\u00ae": [
+    "Secured MasterCard": [
         130,
         {
             "_id": "5e690b260b077d5830cae248",
-            "title": "Secured MasterCard\u00ae",
-            "original_title": "Secured MasterCard\u00ae",
+            "title": "Secured MasterCard",
+            "original_title": "Secured MasterCard",
             "fee": 19,
             "url": "https://www.firstbankcard.com/common/dynamicapp/web/chemical/learnmore_mcsecure.html",
             "foreign_fee": true,
@@ -69766,19 +69835,19 @@ data = {
             }
         }
     ],
-    "CitiBusiness\u00ae (Legacy)": [
+    "CitiBusiness (Legacy)": [
         130,
         {
             "_id": "5e690b260b077d5830cadc7a",
-            "title": "CitiBusiness\u00ae (Legacy)",
-            "original_title": "CitiBusiness\u00ae (Legacy)",
+            "title": "CitiBusiness (Legacy)",
+            "original_title": "CitiBusiness (Legacy)",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 5 ThankYou\u00ae points per dollar spent on gas, grocery and drugstore purchases."
+                    "title": "Earn 5 ThankYou points per dollar spent on gas, grocery and drugstore purchases."
                 }
             ],
             "earnings": [],
@@ -69833,12 +69902,12 @@ data = {
             }
         }
     ],
-    "USAA Rewards\u2122 American Express\u00ae Card": [
+    "USAA Rewards American Express Card": [
         130,
         {
             "_id": "5e690b260b077d5830cae3ce",
-            "title": "USAA Rewards\u2122 American Express\u00ae Card",
-            "original_title": "USAA Rewards\u2122 American Express\u00ae Card",
+            "title": "USAA Rewards American Express Card",
+            "original_title": "USAA Rewards American Express Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.usaa.com/inet/pages/banking_credit_cards_amex",
@@ -69898,12 +69967,12 @@ data = {
             }
         }
     ],
-    "BankAmericard Travel Rewards\u00ae Credit Card for Students": [
+    "BankAmericard Travel Rewards Credit Card for Students": [
         130,
         {
             "_id": "5e690b260b077d5830cadb01",
-            "title": "BankAmericard Travel Rewards\u00ae Credit Card for Students",
-            "original_title": "BankAmericard Travel Rewards\u00ae Credit Card for Students",
+            "title": "BankAmericard Travel Rewards Credit Card for Students",
+            "original_title": "BankAmericard Travel Rewards Credit Card for Students",
             "fee": 0,
             "url": "https://www.bankofamerica.com/credit-cards/products/student-rewards-credit-card.go",
             "foreign_fee": true,
@@ -70007,7 +70076,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Get a $25 American Express\u00ae shopping card for every $2,500 you spend."
+                    "title": "Get a $25 American Express shopping card for every $2,500 you spend."
                 }
             ],
             "earnings": [],
@@ -70097,12 +70166,12 @@ data = {
             }
         }
     ],
-    "U.S. Bank FlexPerks\u00ae Reserve American Express\u00ae Card": [
+    "U.S. Bank FlexPerks Reserve American Express Card": [
         131,
         {
             "_id": "5e690b260b077d5830cae365",
-            "title": "U.S. Bank FlexPerks\u00ae Reserve American Express\u00ae Card",
-            "original_title": "U.S. Bank FlexPerks\u00ae Reserve American Express\u00ae Card",
+            "title": "U.S. Bank FlexPerks Reserve American Express Card",
+            "original_title": "U.S. Bank FlexPerks Reserve American Express Card",
             "nickname": "AMEX",
             "fee": 299,
             "url": "https://reserve.usbank.com/flexperks-amex",
@@ -70181,12 +70250,12 @@ data = {
             }
         }
     ],
-    "Diamond Resorts International\u00ae MasterCard\u00ae": [
+    "Diamond Resorts International MasterCard": [
         131,
         {
             "_id": "5e690b260b077d5830cadd56",
-            "title": "Diamond Resorts International\u00ae MasterCard\u00ae",
-            "original_title": "Diamond Resorts International\u00ae MasterCard\u00ae",
+            "title": "Diamond Resorts International MasterCard",
+            "original_title": "Diamond Resorts International MasterCard",
             "fee": 0,
             "url": "https://www.barclaycardus.com/apply/Landing.action?campaignId=2035&cellNumber=4",
             "foreign_fee": true,
@@ -70218,12 +70287,12 @@ data = {
             }
         }
     ],
-    "LifeMiles Visa Signature\u00ae Card": [
+    "LifeMiles Visa Signature Card": [
         131,
         {
             "_id": "5e690b260b077d5830cadead",
-            "title": "LifeMiles Visa Signature\u00ae Card",
-            "original_title": "LifeMiles Visa Signature\u00ae Card",
+            "title": "LifeMiles Visa Signature Card",
+            "original_title": "LifeMiles Visa Signature Card",
             "fee": 75,
             "url": "https://www.usbank.com/credit-cards/lifemiles-visa-signature-credit-card.html",
             "foreign_fee": true,
@@ -70267,7 +70336,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Save 5\u00a2 per gallon at participating Walmart gas stations in the U.S."
+                    "title": "Save 5 per gallon at participating Walmart gas stations in the U.S."
                 },
                 {
                     "title": "Earn $5 back on every $500 spent."
@@ -70485,12 +70554,12 @@ data = {
             }
         }
     ],
-    "Green Dot primor\u00ae Visa\u00ae Classic Secured Credit Card": [
+    "Green Dot primor Visa Classic Secured Credit Card": [
         132,
         {
             "_id": "5e690b260b077d5830cade47",
-            "title": "Green Dot primor\u00ae Visa\u00ae Classic Secured Credit Card",
-            "original_title": "Green Dot primor\u00ae Visa\u00ae Classic Secured Credit Card",
+            "title": "Green Dot primor Visa Classic Secured Credit Card",
+            "original_title": "Green Dot primor Visa Classic Secured Credit Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -70810,12 +70879,12 @@ data = {
             }
         }
     ],
-    "CashBack Platinum MasterCard\u00ae": [
+    "CashBack Platinum MasterCard": [
         132,
         {
             "_id": "5e690b260b077d5830cadc0c",
-            "title": "CashBack Platinum MasterCard\u00ae",
-            "original_title": "CashBack Platinum MasterCard\u00ae",
+            "title": "CashBack Platinum MasterCard",
+            "original_title": "CashBack Platinum MasterCard",
             "fee": 0,
             "url": "http://www.charterone.com/cards-and-rewards/credit-cards/cashback-platinum.aspx",
             "foreign_fee": true,
@@ -70941,7 +71010,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "5% Back in Rewards for every $1 spent at Bed Bath & Beyond\u00ae, buybuy BABY\u00ae, Christmas Tree Shops and THAT!, and Harmon Face Values\u00ae using your Bed Bath & Beyond\u00ae Credit Card."
+                    "title": "5% Back in Rewards for every $1 spent at Bed Bath & Beyond, buybuy BABY, Christmas Tree Shops and THAT!, and Harmon Face Values using your Bed Bath & Beyond Credit Card."
                 },
                 {
                     "title": "1% Back in Rewards for every $1 spent anywhere else Mastercard is accepted"
@@ -71046,12 +71115,12 @@ data = {
             }
         }
     ],
-    "Trans@ct Prepaid Mastercard\u00ae from 7-Eleven": [
+    "Trans@ct Prepaid Mastercard from 7-Eleven": [
         133,
         {
             "_id": "5e690b260b077d5830cae350",
-            "title": "Trans@ct Prepaid Mastercard\u00ae from 7-Eleven",
-            "original_title": "Trans@ct Prepaid Mastercard\u00ae from 7-Eleven",
+            "title": "Trans@ct Prepaid Mastercard from 7-Eleven",
+            "original_title": "Trans@ct Prepaid Mastercard from 7-Eleven",
             "nickname": "Transact 7-11",
             "fee": 0,
             "url": "https://www.transact711.com",
@@ -71133,12 +71202,12 @@ data = {
             }
         }
     ],
-    "ExtraEarnings\u00ae Visa\u00ae Card": [
+    "ExtraEarnings Visa Card": [
         133,
         {
             "_id": "5e690b260b077d5830cadd9e",
-            "title": "ExtraEarnings\u00ae Visa\u00ae Card",
-            "original_title": "ExtraEarnings\u00ae Visa\u00ae Card",
+            "title": "ExtraEarnings Visa Card",
+            "original_title": "ExtraEarnings Visa Card",
             "fee": 0,
             "url": "https://www.fnbodirect.com/site/credit-card/visa/visa-extraearnings.fhtml",
             "foreign_fee": true,
@@ -71204,12 +71273,12 @@ data = {
             }
         }
     ],
-    "Johnson Visa Signature\u00ae Bonus Rewards Plus Card": [
+    "Johnson Visa Signature Bonus Rewards Plus Card": [
         133,
         {
             "_id": "5e690b260b077d5830cade93",
-            "title": "Johnson Visa Signature\u00ae Bonus Rewards Plus Card",
-            "original_title": "Johnson Visa Signature\u00ae Bonus Rewards Plus Card",
+            "title": "Johnson Visa Signature Bonus Rewards Plus Card",
+            "original_title": "Johnson Visa Signature Bonus Rewards Plus Card",
             "fee": 50,
             "url": "",
             "foreign_fee": true,
@@ -71346,12 +71415,12 @@ data = {
             }
         }
     ],
-    "Norwich University Alumni Association USAA Rewards\u2122": [
+    "Norwich University Alumni Association USAA Rewards": [
         134,
         {
             "_id": "5e690b260b077d5830cadf87",
-            "title": "Norwich University Alumni Association USAA Rewards\u2122",
-            "original_title": "Norwich University Alumni Association USAA Rewards\u2122",
+            "title": "Norwich University Alumni Association USAA Rewards",
+            "original_title": "Norwich University Alumni Association USAA Rewards",
             "fee": 0,
             "url": "https://www.usaa.com/inet/pages/bank_credit_cards_military_affinity_deepdive_template?adid=aff_nuaa_cc_webpage&affid=033&affid=033&cardType=ALL",
             "foreign_fee": true,
@@ -71703,7 +71772,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Use your card at locations everywhere that Mastercard\u00ae is accepted"
+                    "title": "Use your card at locations everywhere that Mastercard is accepted"
                 },
                 {
                     "title": "No cash back rewards."
@@ -71857,12 +71926,12 @@ data = {
             }
         }
     ],
-    "Visa\u00ae Platinum with CURewards": [
+    "Visa Platinum with CURewards": [
         134,
         {
             "_id": "5e690b260b077d5830cae527",
-            "title": "Visa\u00ae Platinum with CURewards",
-            "original_title": "Visa\u00ae Platinum with CURewards",
+            "title": "Visa Platinum with CURewards",
+            "original_title": "Visa Platinum with CURewards",
             "fee": 0,
             "url": "https://www.gtefinancial.org/personal/credit-cards/get-more-with-your-credit-card/visa-platinum-with-rewards",
             "foreign_fee": true,
@@ -71925,12 +71994,12 @@ data = {
             }
         }
     ],
-    "UConn Secured Visa\u00ae Card": [
+    "UConn Secured Visa Card": [
         135,
         {
             "_id": "5e690b260b077d5830cae378",
-            "title": "UConn Secured Visa\u00ae Card",
-            "original_title": "UConn Secured Visa\u00ae Card",
+            "title": "UConn Secured Visa Card",
+            "original_title": "UConn Secured Visa Card",
             "fee": 35,
             "url": "https://online1.elancard.com/oad/catalog/learnMore.controller?productId=40",
             "foreign_fee": true,
@@ -72221,7 +72290,7 @@ data = {
             "rewards_type": 1,
             "rewards": [
                 {
-                    "title": "Rewards don\u2019t expire for the life of the account, and you can redeem cash back for any amount."
+                    "title": "Rewards dont expire for the life of the account, and you can redeem cash back for any amount."
                 },
                 {
                     "title": "No annual fee."
@@ -72287,7 +72356,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Enjoy 25% back as a statement credit on purchases of food, beverages and Wi-Fi onboard United\u00ae-operated flights when you pay with your United TravelBank Card."
+                    "title": "Enjoy 25% back as a statement credit on purchases of food, beverages and Wi-Fi onboard United-operated flights when you pay with your United TravelBank Card."
                 },
                 {
                     "title": "Earn 2% in TravelBank cash per $1 spent on tickets purchased from United."
@@ -72495,12 +72564,12 @@ data = {
             }
         }
     ],
-    "The University of Montana Visa\u00ae Rewards Credit Card": [
+    "The University of Montana Visa Rewards Credit Card": [
         136,
         {
             "_id": "5e690b260b077d5830cae33c",
-            "title": "The University of Montana Visa\u00ae Rewards Credit Card",
-            "original_title": "The University of Montana Visa\u00ae Rewards Credit Card",
+            "title": "The University of Montana Visa Rewards Credit Card",
+            "original_title": "The University of Montana Visa Rewards Credit Card",
             "fee": 0,
             "url": "http://www.commercebank.com/affinity-agent-cards/Montana",
             "foreign_fee": true,
@@ -72565,12 +72634,12 @@ data = {
             }
         }
     ],
-    "Credit One Bank\u00ae Visa\u00ae Platinum": [
+    "Credit One Bank Visa Platinum": [
         136,
         {
             "_id": "5e690b260b077d5830cadd27",
-            "title": "Credit One Bank\u00ae Visa\u00ae Platinum",
-            "original_title": "Credit One Bank\u00ae Visa\u00ae Platinum",
+            "title": "Credit One Bank Visa Platinum",
+            "original_title": "Credit One Bank Visa Platinum",
             "fee": 99,
             "url": "",
             "foreign_fee": true,
@@ -72680,12 +72749,12 @@ data = {
             }
         }
     ],
-    "Expedia\u00ae+ Card": [
+    "Expedia+ Card": [
         136,
         {
             "_id": "5e690b260b077d5830cadd9b",
-            "title": "Expedia\u00ae+ Card",
-            "original_title": "Expedia\u00ae+ Card",
+            "title": "Expedia+ Card",
+            "original_title": "Expedia+ Card",
             "fee": 0,
             "url": "https://www.citi.com/credit-cards/credit-card-details/detail.do?ID=expedia-plus&category=view-all-credit-cards",
             "foreign_fee": true,
@@ -72822,12 +72891,12 @@ data = {
             }
         }
     ],
-    "BankAmericard\u00ae Visa\u00ae Card": [
+    "BankAmericard Visa Card": [
         137,
         {
             "_id": "5e690b260b077d5830cadb06",
-            "title": "BankAmericard\u00ae Visa\u00ae Card",
-            "original_title": "BankAmericard\u00ae Visa\u00ae Card",
+            "title": "BankAmericard Visa Card",
+            "original_title": "BankAmericard Visa Card",
             "fee": 0,
             "url": "https://www.bankofamerica.com/credit-cards/products/bankamericard-credit-card.go",
             "foreign_fee": true,
@@ -73032,12 +73101,12 @@ data = {
             }
         }
     ],
-    "Bank of America\u00ae Cash Rewards for Business MasterCard\u00ae Card": [
+    "Bank of America Cash Rewards for Business MasterCard Card": [
         137,
         {
             "_id": "5e690b260b077d5830cadaee",
-            "title": "Bank of America\u00ae Cash Rewards for Business MasterCard\u00ae Card",
-            "original_title": "Bank of America\u00ae Cash Rewards for Business MasterCard\u00ae Card",
+            "title": "Bank of America Cash Rewards for Business MasterCard Card",
+            "original_title": "Bank of America Cash Rewards for Business MasterCard Card",
             "fee": 0,
             "url": "https://business.bankofamerica.com/creditcard/products/cash-back-business-credit-card",
             "foreign_fee": true,
@@ -73109,12 +73178,12 @@ data = {
             }
         }
     ],
-    "Accelerated Cash Rewards\u2122": [
+    "Accelerated Cash Rewards": [
         137,
         {
             "_id": "5e690b260b077d5830cada44",
-            "title": "Accelerated Cash Rewards\u2122",
-            "original_title": "Accelerated Cash Rewards\u2122",
+            "title": "Accelerated Cash Rewards",
+            "original_title": "Accelerated Cash Rewards",
             "nickname": "AMEX",
             "fee": 0,
             "url": "",
@@ -73144,12 +73213,12 @@ data = {
             }
         }
     ],
-    "USAA Active Military MasterCard\u00ae": [
+    "USAA Active Military MasterCard": [
         137,
         {
             "_id": "5e690b260b077d5830cae3c0",
-            "title": "USAA Active Military MasterCard\u00ae",
-            "original_title": "USAA Active Military MasterCard\u00ae",
+            "title": "USAA Active Military MasterCard",
+            "original_title": "USAA Active Military MasterCard",
             "fee": 0,
             "url": "https://www.usaa.com/inet/pages/credit_cards_rates_and_fees_regular",
             "foreign_fee": true,
@@ -73217,7 +73286,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadb31",
             "title": "American Express Blue Business Cash Card",
-            "original_title": "Blue Business Cash\u2122 Card",
+            "original_title": "Blue Business Cash Card",
             "nickname": "BBC, AMEX",
             "fee": 0,
             "url": "https://www.americanexpress.com/us/credit-cards/card-application/apply/bluebusinesscash-credit-card/30215-9-0/#/",
@@ -73225,10 +73294,10 @@ data = {
             "rewards_type": 1,
             "rewards": [
                 {
-                    "title": "Purchase Protection. Your new camera was stolen. You knocked over your new lamp moving your couch. Sometimes the unexpected happens. But when you use your Card for eligible purchases, it\u2019s nice to know Membership can help protect your purchases from accidental damage or theft for up to 90 days from the moment you purchase them."
+                    "title": "Purchase Protection. Your new camera was stolen. You knocked over your new lamp moving your couch. Sometimes the unexpected happens. But when you use your Card for eligible purchases, its nice to know Membership can help protect your purchases from accidental damage or theft for up to 90 days from the moment you purchase them."
                 },
                 {
-                    "title": "Extended Warranty. When you use your American Express\u00ae Card for eligible purchases, you can get up to one extra year added to the original manufacturer's warranty. Applies to warranties of 5 years or less. Please read important exclusions and restrictions."
+                    "title": "Extended Warranty. When you use your American Express Card for eligible purchases, you can get up to one extra year added to the original manufacturer's warranty. Applies to warranties of 5 years or less. Please read important exclusions and restrictions."
                 },
                 {
                     "title": "Earn 2% cash back on all eligible purchases up to $50,000 per calendar year, then 1% cash back applies after that."
@@ -73489,12 +73558,12 @@ data = {
             }
         }
     ],
-    "Propel World American Express\u00ae Card": [
+    "Propel World American Express Card": [
         138,
         {
             "_id": "5e690b260b077d5830cae1ab",
-            "title": "Propel World American Express\u00ae Card",
-            "original_title": "Propel World American Express\u00ae Card",
+            "title": "Propel World American Express Card",
+            "original_title": "Propel World American Express Card",
             "nickname": "AMEX",
             "fee": 175,
             "url": "https://www.wellsfargo.com/credit-cards/propelworld/",
@@ -73644,12 +73713,12 @@ data = {
             }
         }
     ],
-    "UConn Visa\u00ae Signature Bonus Rewards Card": [
+    "UConn Visa Signature Bonus Rewards Card": [
         138,
         {
             "_id": "5e690b260b077d5830cae37a",
-            "title": "UConn Visa\u00ae Signature Bonus Rewards Card",
-            "original_title": "UConn Visa\u00ae Signature Bonus Rewards Card",
+            "title": "UConn Visa Signature Bonus Rewards Card",
+            "original_title": "UConn Visa Signature Bonus Rewards Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -73678,12 +73747,12 @@ data = {
             }
         }
     ],
-    "primor\u00ae Secured Visa Classic Card": [
+    "primor Secured Visa Classic Card": [
         138,
         {
             "_id": "5e690b260b077d5830cae19c",
-            "title": "primor\u00ae Secured Visa Classic Card",
-            "original_title": "primor\u00ae Secured Visa Classic Card",
+            "title": "primor Secured Visa Classic Card",
+            "original_title": "primor Secured Visa Classic Card",
             "fee": 39,
             "url": "https://www.firstchoice-bank.com/credit-cards.htm",
             "foreign_fee": true,
@@ -73712,19 +73781,19 @@ data = {
             }
         }
     ],
-    "Azamara Visa Signature\u00ae": [
+    "Azamara Visa Signature": [
         139,
         {
             "_id": "5e690b260b077d5830cadae3",
-            "title": "Azamara Visa Signature\u00ae",
-            "original_title": "Azamara Visa Signature\u00ae",
+            "title": "Azamara Visa Signature",
+            "original_title": "Azamara Visa Signature",
             "fee": 69,
             "url": "https://www.azamaraclubcruises.com/luxury-cruise-deals/extraordinary-adventures-can-be-yours",
             "foreign_fee": true,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 2 MyCruise points for every $1 spent on purchases on Azamara Club Cruises\u00ae and sister brands Royal Caribbean International\u00ae and Celebrity Cruises\u00ae."
+                    "title": "Earn 2 MyCruise points for every $1 spent on purchases on Azamara Club Cruises and sister brands Royal Caribbean International and Celebrity Cruises."
                 },
                 {
                     "title": "Earn 1 MyCruise point for every $1 spent on everyday purchases with your card."
@@ -73749,12 +73818,12 @@ data = {
             }
         }
     ],
-    "Alpha Kappa Psi Visa\u00ae Signature": [
+    "Alpha Kappa Psi Visa Signature": [
         139,
         {
             "_id": "5e690b260b077d5830cada69",
-            "title": "Alpha Kappa Psi Visa\u00ae Signature",
-            "original_title": "Alpha Kappa Psi Visa\u00ae Signature",
+            "title": "Alpha Kappa Psi Visa Signature",
+            "original_title": "Alpha Kappa Psi Visa Signature",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -74116,12 +74185,12 @@ data = {
             }
         }
     ],
-    "Rutgers University Visa\u00ae Signature Card": [
+    "Rutgers University Visa Signature Card": [
         139,
         {
             "_id": "5e690b260b077d5830cae1f0",
-            "title": "Rutgers University Visa\u00ae Signature Card",
-            "original_title": "Rutgers University Visa\u00ae Signature Card",
+            "title": "Rutgers University Visa Signature Card",
+            "original_title": "Rutgers University Visa Signature Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -74453,12 +74522,12 @@ data = {
             }
         }
     ],
-    "BBVA Compass NBA American Express\u00ae Card": [
+    "BBVA Compass NBA American Express Card": [
         140,
         {
             "_id": "5e690b260b077d5830cadb16",
-            "title": "BBVA Compass NBA American Express\u00ae Card",
-            "original_title": "BBVA Compass NBA American Express\u00ae Card",
+            "title": "BBVA Compass NBA American Express Card",
+            "original_title": "BBVA Compass NBA American Express Card",
             "nickname": "AMEX",
             "fee": 50,
             "url": "http://www.bbvacompass.com/nba/",
@@ -74502,7 +74571,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadbe4",
             "title": "Capital One Spark Classic for Business",
-            "original_title": "Capital One\u00ae Spark\u2120 Classic for Business",
+            "original_title": "Capital One Spark Classic for Business",
             "fee": 0,
             "url": "http://www.capitalone.com/credit-cards/business/spark-classic/",
             "foreign_fee": false,
@@ -74760,12 +74829,12 @@ data = {
             }
         }
     ],
-    "Avianca Vida Visa\u00ae Card": [
+    "Avianca Vida Visa Card": [
         141,
         {
             "_id": "5e690b260b077d5830cadae1",
-            "title": "Avianca Vida Visa\u00ae Card",
-            "original_title": "Avianca Vida Visa\u00ae Card",
+            "title": "Avianca Vida Visa Card",
+            "original_title": "Avianca Vida Visa Card",
             "fee": 59,
             "url": "https://www.lifemilescreditcard.com",
             "foreign_fee": true,
@@ -74850,12 +74919,12 @@ data = {
             }
         }
     ],
-    "American Express\u00ae Corporate Green Card": [
+    "American Express Corporate Green Card": [
         141,
         {
             "_id": "5e690b260b077d5830cadaa1",
-            "title": "American Express\u00ae Corporate Green Card",
-            "original_title": "American Express\u00ae Corporate Green Card",
+            "title": "American Express Corporate Green Card",
+            "original_title": "American Express Corporate Green Card",
             "nickname": "AMEX",
             "fee": 0,
             "url": "",
@@ -74863,7 +74932,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn one Membership Rewards\u00ae point for every dollar of eligible purchases charged on enrolled American Express\u00ae Corporate Cards in the Membership Rewards\u00ae program."
+                    "title": "Earn one Membership Rewards point for every dollar of eligible purchases charged on enrolled American Express Corporate Cards in the Membership Rewards program."
                 }
             ],
             "earnings": [],
@@ -74931,7 +75000,7 @@ data = {
             "rewards_type": 6,
             "rewards": [
                 {
-                    "title": "You\u2019ll earn 2X Rewards Program Points on new travel purchases \u2013 including airline, hotels, and car rentals"
+                    "title": "Youll earn 2X Rewards Program Points on new travel purchases  including airline, hotels, and car rentals"
                 },
                 {
                     "title": "1X on all other purchases"
@@ -74943,17 +75012,17 @@ data = {
             "earnings": [
                 {
                     "points": 2,
-                    "description": "You\u2019ll earn 2X Rewards Program Points on new travel purchases \u2013 including airline, hotels, and car rentals",
+                    "description": "Youll earn 2X Rewards Program Points on new travel purchases  including airline, hotels, and car rentals",
                     "category": 1
                 },
                 {
                     "points": 2,
-                    "description": "You\u2019ll earn 2X Rewards Program Points on new travel purchases \u2013 including airline, hotels, and car rentals",
+                    "description": "Youll earn 2X Rewards Program Points on new travel purchases  including airline, hotels, and car rentals",
                     "category": 3
                 },
                 {
                     "points": 2,
-                    "description": "You\u2019ll earn 2X Rewards Program Points on new travel purchases \u2013 including airline, hotels, and car rentals",
+                    "description": "Youll earn 2X Rewards Program Points on new travel purchases  including airline, hotels, and car rentals",
                     "category": 10
                 },
                 {
@@ -75014,12 +75083,12 @@ data = {
             }
         }
     ],
-    "FIT Mastercard\u00ae Credit Card ": [
+    "FIT Mastercard Credit Card ": [
         141,
         {
             "_id": "5e690b260b077d5830caddc2",
-            "title": "FIT Mastercard\u00ae Credit Card ",
-            "original_title": "FIT Mastercard\u00ae Credit Card",
+            "title": "FIT Mastercard Credit Card ",
+            "original_title": "FIT Mastercard Credit Card",
             "fee": 0,
             "url": "",
             "foreign_fee": true,
@@ -75127,7 +75196,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cadbe1",
             "title": "Capital One Spark Miles for Business",
-            "original_title": "Capital One\u00ae Spark\u00ae Miles for Business",
+            "original_title": "Capital One Spark Miles for Business",
             "fee": 95,
             "url": "https://www.capitalone.com/small-business/credit-cards/spark-miles/",
             "foreign_fee": false,
@@ -75140,7 +75209,7 @@ data = {
                     "title": "Earn unlimited 2X miles on every purchase for your business."
                 },
                 {
-                    "title": "Earn 5X miles on hotel and rental car bookings through Capital One Travel\u2120 using a Spark Miles card."
+                    "title": "Earn 5X miles on hotel and rental car bookings through Capital One Travel using a Spark Miles card."
                 },
                 {
                     "title": "Earn 50,000 bonus miles when you spend $4,500 in the first 3 months of opening."
@@ -75152,12 +75221,12 @@ data = {
             "earnings": [
                 {
                     "points": 5,
-                    "description": "Earn 5X miles on hotel and rental car bookings through Capital One Travel\u2120 using a Spark Miles card.",
+                    "description": "Earn 5X miles on hotel and rental car bookings through Capital One Travel using a Spark Miles card.",
                     "category": 3
                 },
                 {
                     "points": 5,
-                    "description": "Earn 5X miles on hotel and rental car bookings through Capital One Travel\u2120 using a Spark Miles card.",
+                    "description": "Earn 5X miles on hotel and rental car bookings through Capital One Travel using a Spark Miles card.",
                     "category": 10
                 },
                 {
@@ -75217,12 +75286,12 @@ data = {
             }
         }
     ],
-    "Popular / AAdvantage\u00ae Visa Signature": [
+    "Popular / AAdvantage Visa Signature": [
         142,
         {
             "_id": "5e690b260b077d5830cae180",
-            "title": "Popular / AAdvantage\u00ae Visa Signature",
-            "original_title": "Popular / AAdvantage\u00ae Visa Signature",
+            "title": "Popular / AAdvantage Visa Signature",
+            "original_title": "Popular / AAdvantage Visa Signature",
             "fee": 50,
             "url": "http://www.popular.com/en/aadvantage-visa-signature",
             "foreign_fee": true,
@@ -75359,12 +75428,12 @@ data = {
             }
         }
     ],
-    "Diamond Backs\u00ae BankAmericard Cash Rewards\u2122 MasterCard\u00ae": [
+    "Diamond Backs BankAmericard Cash Rewards MasterCard": [
         142,
         {
             "_id": "5e690b260b077d5830cadd52",
-            "title": "Diamond Backs\u00ae BankAmericard Cash Rewards\u2122 MasterCard\u00ae",
-            "original_title": "Diamond Backs\u00ae BankAmericard Cash Rewards\u2122 MasterCard\u00ae",
+            "title": "Diamond Backs BankAmericard Cash Rewards MasterCard",
+            "original_title": "Diamond Backs BankAmericard Cash Rewards MasterCard",
             "fee": 0,
             "url": "https://www.bankofamerica.com/credit-cards/products/mlb-credit-cards.go",
             "foreign_fee": true,
@@ -75790,12 +75859,12 @@ data = {
             }
         }
     ],
-    "Blue Cash\u00ae from American Express": [
+    "Blue Cash from American Express": [
         143,
         {
             "_id": "5e690b260b077d5830cadb35",
-            "title": "Blue Cash\u00ae from American Express",
-            "original_title": "Blue Cash\u00ae from American Express",
+            "title": "Blue Cash from American Express",
+            "original_title": "Blue Cash from American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "https://www.americanexpress.com/us/credit-cards/blue",
@@ -75947,7 +76016,7 @@ data = {
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "You don\u2019t have to worry about annual or foreign transaction fees."
+                    "title": "You dont have to worry about annual or foreign transaction fees."
                 },
                 {
                     "title": "And if you pay your wireless bill with your Uber Credit Card, enjoy cell phone protection, up to $600 per eligible claim."
@@ -76151,7 +76220,7 @@ data = {
                     "title": "Earn 80,000 bonus points  after you spend $3,000 on purchases in your first 3 months from account opening."
                 },
                 {
-                    "title": "Earn 5 points for every $1 spent at over 4,000 Marriott locations worldwide, including our exclusive luxury hotel partner, The Ritz-Carlton\u00ae."
+                    "title": "Earn 5 points for every $1 spent at over 4,000 Marriott locations worldwide, including our exclusive luxury hotel partner, The Ritz-Carlton."
                 },
                 {
                     "title": "Earn 2 points for every $1 spent on airline tickets purchased directly with the airline, and at car rental agencies & restaurants."
@@ -76163,7 +76232,7 @@ data = {
             "earnings": [
                 {
                     "points": 5,
-                    "description": "Earn 5 points for every $1 spent at over 4,000 Marriott locations worldwide, including our exclusive luxury hotel partner, The Ritz-Carlton\u00ae.",
+                    "description": "Earn 5 points for every $1 spent at over 4,000 Marriott locations worldwide, including our exclusive luxury hotel partner, The Ritz-Carlton.",
                     "category": 10
                 },
                 {
@@ -76204,12 +76273,12 @@ data = {
             }
         }
     ],
-    "Expedia\u00ae+ Voyager Card": [
+    "Expedia+ Voyager Card": [
         143,
         {
             "_id": "5e690b260b077d5830cadd9c",
-            "title": "Expedia\u00ae+ Voyager Card",
-            "original_title": "Expedia\u00ae+ Voyager Card",
+            "title": "Expedia+ Voyager Card",
+            "original_title": "Expedia+ Voyager Card",
             "fee": 95,
             "url": "https://www.citi.com/credit-cards/credit-card-details/detail.do?ID=expedia-plus-voyager&category=view-all-credit-cards",
             "foreign_fee": true,
@@ -76331,12 +76400,12 @@ data = {
             }
         }
     ],
-    "Marriott Bonvoy Brilliant\u2122 American Express\u00ae Card": [
+    "Marriott Bonvoy Brilliant American Express Card": [
         144,
         {
             "_id": "5e690b260b077d5830caded5",
-            "title": "Marriott Bonvoy Brilliant\u2122 American Express\u00ae Card",
-            "original_title": "Marriott Bonvoy Brilliant\u2122 American Express\u00ae Card",
+            "title": "Marriott Bonvoy Brilliant American Express Card",
+            "original_title": "Marriott Bonvoy Brilliant American Express Card",
             "nickname": "AMEX",
             "fee": 450,
             "url": "https://www.americanexpress.com/us/credit-cards/card/marriott-bonvoy-brilliant/?eep=26129&extlink=af-us-ccsg-MBBLM&irgwc=1&veid=QjIXlAzZCxyJWIR0GBQcExbTUkgS-pRt23A2Xg0&affid=1137073&pid=IR&affname=TPG&sid=12011830006&pmc=1150&BUID=CCG&CRTV=controlaffcps&MPR=05",
@@ -76347,13 +76416,13 @@ data = {
                     "title": "Receive 1 Free Night Award every year after your Card account anniversary. Award can be used for one night (redemption level at or under 50,000 Marriott Bonvoy points) at a participating hotel. Certain hotels have resort fees."
                 },
                 {
-                    "title": "Marriott Bonvoy Brilliant\u2122 American Express\u00ae Card Next-Level Luxury LIMITED TIME OFFER  EARN 100,000 BONUS MARRIOTT BONVOY POINTS after you use your new Card to make $5,000 in purchases within the first 3 months."
+                    "title": "Marriott Bonvoy Brilliant American Express Card Next-Level Luxury LIMITED TIME OFFER  EARN 100,000 BONUS MARRIOTT BONVOY POINTS after you use your new Card to make $5,000 in purchases within the first 3 months."
                 },
                 {
                     "title": "Enjoy up to $300 in statement credits each year of Card Membership for eligible purchases at participating Marriott Bonvoy hotels."
                 },
                 {
-                    "title": "Enjoy complimentary Marriott Bonvoy Gold Elite status with your Card.\u2021 Earn Marriott Bonvoy Platinum Elite status after making $75,000 in eligible purchases on your Card in a calendar year."
+                    "title": "Enjoy complimentary Marriott Bonvoy Gold Elite status with your Card. Earn Marriott Bonvoy Platinum Elite status after making $75,000 in eligible purchases on your Card in a calendar year."
                 },
                 {
                     "title": "EARN 6X MARRIOTT BONVOY POINTS on eligible purchases at participating Marriott Bonvoy hotels."
@@ -76405,11 +76474,11 @@ data = {
             }
         }
     ],
-    "Marriott Bonvoy Boundless\u00a0Credit Card": [
+    "Marriott Bonvoy BoundlessCredit Card": [
         144,
         {
             "_id": "5e690b260b077d5830caded4",
-            "title": "Marriott Bonvoy Boundless\u00a0Credit Card",
+            "title": "Marriott Bonvoy BoundlessCredit Card",
             "original_title": "Marriott Bonvoy Boundless",
             "fee": 95,
             "url": "https://creditcards.chase.com/a1/marriottboundless/nonaep?CELL=6H8X&AFFID=EhraRx8K_BE-axRDkOhgqCOPF_dhaFKF.g&pvid=5c2908ddb2454375a7c450ec623daf22&jp_cmp=cc/643428/aff/3-10003159/na",
@@ -76417,7 +76486,7 @@ data = {
             "rewards_type": 8,
             "rewards": [
                 {
-                    "title": "You will pay no foreign transaction fees when you use your card for purchases made outside the United States\u2020 opens in a same window . For example, if you spend $5,000 internationally, you would avoid $150 in foreign transaction fees."
+                    "title": "You will pay no foreign transaction fees when you use your card for purchases made outside the United States opens in a same window . For example, if you spend $5,000 internationally, you would avoid $150 in foreign transaction fees."
                 },
                 {
                     "title": "You will automatically receive Silver Elite Status each account anniversary year as a cardmember."
@@ -76473,12 +76542,12 @@ data = {
             }
         }
     ],
-    "The Ritz-Carlton Rewards\u00ae Credit Card": [
+    "The Ritz-Carlton Rewards Credit Card": [
         144,
         {
             "_id": "5e690b260b077d5830cae336",
-            "title": "The Ritz-Carlton Rewards\u00ae Credit Card",
-            "original_title": "The Ritz-Carlton Rewards\u00ae Credit Card",
+            "title": "The Ritz-Carlton Rewards Credit Card",
+            "original_title": "The Ritz-Carlton Rewards Credit Card",
             "fee": 395,
             "url": "https://creditcards.chase.com/marriott/cardmember/ritz-carlton",
             "foreign_fee": false,
@@ -76558,7 +76627,7 @@ data = {
         {
             "_id": "5e690b260b077d5830cade58",
             "title": "Hilton Honors American Express Surpass Card",
-            "original_title": "Hilton HHonors\u2122 Surpass\u00ae Card from American Express",
+            "original_title": "Hilton HHonors Surpass Card from American Express",
             "nickname": "AMEX",
             "fee": 95,
             "url": "https://www.americanexpress.com/us/credit-cards/card/hilton-honors-surpass/",
@@ -76569,7 +76638,7 @@ data = {
                     "title": "Enjoy international travel without additional fees on purchases made abroad."
                 },
                 {
-                    "title": "Enjoy complimentary Hilton Honors Gold status with your Hilton Honors Surpass\u00ae Card. Plus, spend $40,000 on eligible purchases on your Card in a calendar year and you can earn Hilton Honors Diamond status through the end of the next calendar year."
+                    "title": "Enjoy complimentary Hilton Honors Gold status with your Hilton Honors Surpass Card. Plus, spend $40,000 on eligible purchases on your Card in a calendar year and you can earn Hilton Honors Diamond status through the end of the next calendar year."
                 },
                 {
                     "title": "Earn a Free Weekend Night Reward from Hilton Honors when you spend $15,000 on eligible purchases on your Card in a calendar year"
@@ -76629,12 +76698,12 @@ data = {
             }
         }
     ],
-    "Hilton HHonors\u2122 Card from American Express": [
+    "Hilton HHonors Card from American Express": [
         144,
         {
             "_id": "5e690b260b077d5830cade57",
-            "title": "Hilton HHonors\u2122 Card from American Express",
-            "original_title": "Hilton HHonors\u2122 Card from American Express",
+            "title": "Hilton HHonors Card from American Express",
+            "original_title": "Hilton HHonors Card from American Express",
             "nickname": "AMEX",
             "fee": 0,
             "url": "",
@@ -76715,7 +76784,7 @@ data = {
                     "title": "Hilton Honors American Express Aspire Card Your Passport to Elevated Travel NEW WELCOME OFFER  Earn 150,000 Hilton Honors Bonus Points after you spend $4,000 in purchases on the Card within your first 3 months of Card Membership."
                 },
                 {
-                    "title": "EARN 7X HILTON HONORS BONUS POINTS on eligible purchases on your Card for: \u2022 Flights booked directly with airlines or amextravel.com \u2022 Car rentals booked directly from select car rental companies \u2022 U.S. restaurants."
+                    "title": "EARN 7X HILTON HONORS BONUS POINTS on eligible purchases on your Card for:  Flights booked directly with airlines or amextravel.com  Car rentals booked directly from select car rental companies  U.S. restaurants."
                 },
                 {
                     "title": "EARN 3X HILTON HONORS BONUS POINTS on all other eligible purchases."
@@ -76738,17 +76807,17 @@ data = {
                 },
                 {
                     "points": 7,
-                    "description": "EARN 7X HILTON HONORS BONUS POINTS on eligible purchases on your Card for: \u2022 Flights booked directly with airlines or amextravel.com \u2022 Car rentals booked directly from select car rental companies \u2022 U.S. restaurants.",
+                    "description": "EARN 7X HILTON HONORS BONUS POINTS on eligible purchases on your Card for:  Flights booked directly with airlines or amextravel.com  Car rentals booked directly from select car rental companies  U.S. restaurants.",
                     "category": 1
                 },
                 {
                     "points": 7,
-                    "description": "EARN 7X HILTON HONORS BONUS POINTS on eligible purchases on your Card for: \u2022 Flights booked directly with airlines or amextravel.com \u2022 Car rentals booked directly from select car rental companies \u2022 U.S. restaurants.",
+                    "description": "EARN 7X HILTON HONORS BONUS POINTS on eligible purchases on your Card for:  Flights booked directly with airlines or amextravel.com  Car rentals booked directly from select car rental companies  U.S. restaurants.",
                     "category": 3
                 },
                 {
                     "points": 7,
-                    "description": "EARN 7X HILTON HONORS BONUS POINTS on eligible purchases on your Card for: \u2022 Flights booked directly with airlines or amextravel.com \u2022 Car rentals booked directly from select car rental companies \u2022 U.S. restaurants.",
+                    "description": "EARN 7X HILTON HONORS BONUS POINTS on eligible purchases on your Card for:  Flights booked directly with airlines or amextravel.com  Car rentals booked directly from select car rental companies  U.S. restaurants.",
                     "category": 14
                 },
                 {
@@ -76885,12 +76954,12 @@ data = {
             }
         }
     ],
-    "Citi\u00ae Hilton HHonors\u2122 Reserve Card": [
+    "Citi Hilton HHonors Reserve Card": [
         144,
         {
             "_id": "5e690b260b077d5830cadc75",
-            "title": "Citi\u00ae Hilton HHonors\u2122 Reserve Card",
-            "original_title": "Citi\u00ae Hilton HHonors\u2122 Reserve Card",
+            "title": "Citi Hilton HHonors Reserve Card",
+            "original_title": "Citi Hilton HHonors Reserve Card",
             "fee": 95,
             "url": "https://www.citi.com/credit-cards/credit-card-details/citi.action?ID=hilton-hhonors-reserve-card",
             "foreign_fee": true,
@@ -77026,12 +77095,12 @@ data = {
             }
         }
     ],
-    "Citi\u00ae Hilton HHonors\u2122 Visa Signature\u00ae Card": [
+    "Citi Hilton HHonors Visa Signature Card": [
         144,
         {
             "_id": "5e690b260b077d5830cadc76",
-            "title": "Citi\u00ae Hilton HHonors\u2122 Visa Signature\u00ae Card",
-            "original_title": "Citi\u00ae Hilton HHonors\u2122 Visa Signature\u00ae Card",
+            "title": "Citi Hilton HHonors Visa Signature Card",
+            "original_title": "Citi Hilton HHonors Visa Signature Card",
             "fee": 0,
             "url": "https://www.citi.com/credit-cards/credit-card-details/citi.action?ID=hilton-hhonors-visa-signature-card",
             "foreign_fee": true,
@@ -77260,7 +77329,7 @@ data = {
                     "title": "Earn FREE groceries with every eligible net purchase."
                 },
                 {
-                    "title": "An additional 25\u00a2 off per gallon for ONE YEAR each time you redeem at least 100 fuel points2 at participating Kroger Family of Companies Fuel Centers."
+                    "title": "An additional 25 off per gallon for ONE YEAR each time you redeem at least 100 fuel points2 at participating Kroger Family of Companies Fuel Centers."
                 },
                 {
                     "title": "3 points per eligible net $1 on the Kroger Family of Companies Own Brand Products."
@@ -77388,7 +77457,7 @@ data = {
                     "title": "No Foreign Transaction Fees on international purchases."
                 },
                 {
-                    "title": "Global Entry or TSA Pre\u2713\u00ae Fee Credit of up to $100 every 4 years as reimbursement for the application fee charged to your Card."
+                    "title": "Global Entry or TSA Pre Fee Credit of up to $100 every 4 years as reimbursement for the application fee charged to your Card."
                 },
                 {
                     "title": "Fourth Reward Night Free when you redeem points for any stay of 4 or more nights."
@@ -77456,19 +77525,19 @@ data = {
             }
         }
     ],
-    "TD First Class Travel\u00aeVisa Infinite* Card": [
+    "TD First Class TravelVisa Infinite* Card": [
         144,
         {
             "_id": "5e690b260b077d5830cae310",
-            "title": "TD First Class Travel\u00aeVisa Infinite* Card",
-            "original_title": "TD First Class Travel\u00aeVisa Infinite* Card",
+            "title": "TD First Class TravelVisa Infinite* Card",
+            "original_title": "TD First Class TravelVisa Infinite* Card",
             "fee": 120,
             "url": "https://www.td.com/ca/en/personal-banking/products/credit-cards/travel-rewards/first-class-travel-visa-infinite-card/",
             "foreign_fee": false,
             "rewards_type": null,
             "rewards": [
                 {
-                    "title": "Earn 9 TD Points when you book travel online through Expedia\u00ae For TD"
+                    "title": "Earn 9 TD Points when you book travel online through Expedia For TD"
                 },
                 {
                     "title": "Earn 3 TD Points for every $1 you spend on Purchases made using your Card"
@@ -77557,12 +77626,12 @@ data = {
             }
         }
     ],
-    "Club Carlson\u2120 Premier Rewards Visa Signature\u00ae Card": [
+    "Club Carlson Premier Rewards Visa Signature Card": [
         144,
         {
             "_id": "5e690b260b077d5830cadcde",
-            "title": "Club Carlson\u2120 Premier Rewards Visa Signature\u00ae Card",
-            "original_title": "Club Carlson\u2120 Premier Rewards Visa Signature\u00ae Card",
+            "title": "Club Carlson Premier Rewards Visa Signature Card",
+            "original_title": "Club Carlson Premier Rewards Visa Signature Card",
             "fee": 75,
             "url": "http://www.clubcarlsonvisa.com/credit/visaPremierCard.do",
             "foreign_fee": true,
@@ -77614,12 +77683,12 @@ data = {
             }
         }
     ],
-    "Radisson Rewards Premier Visa Signature (Old Club Carlson Platinum Rewards Visa\u00ae Card)": [
+    "Radisson Rewards Premier Visa Signature (Old Club Carlson Platinum Rewards Visa Card)": [
         144,
         {
             "_id": "5e690b260b077d5830cae1b3",
-            "title": "Radisson Rewards Premier Visa Signature (Old Club Carlson Platinum Rewards Visa\u00ae Card)",
-            "original_title": "Radisson Rewards Premier Visa Signature (Old Club Carlson Platinum Rewards Visa\u00ae Card)",
+            "title": "Radisson Rewards Premier Visa Signature (Old Club Carlson Platinum Rewards Visa Card)",
+            "original_title": "Radisson Rewards Premier Visa Signature (Old Club Carlson Platinum Rewards Visa Card)",
             "fee": 50,
             "url": "http://www.clubcarlsonvisa.com/credit/visaPlatinumCard.do",
             "foreign_fee": true,
@@ -77680,7 +77749,7 @@ data = {
                     "title": "Your Club Carlson membership will be upgraded to Gold Elite Status after you activate and use your card."
                 },
                 {
-                    "title": "Up to 85,000 Bonus Gold Points\u00ae - receive 50,000 Gold Points after your first purchase plus 35,000 points once you spend $2,500 on your card within the first 90 days"
+                    "title": "Up to 85,000 Bonus Gold Points - receive 50,000 Gold Points after your first purchase plus 35,000 points once you spend $2,500 on your card within the first 90 days"
                 },
                 {
                     "title": "Earn one free night when you charge $10,000 then renew your Card.4  Exclusively for Business Owners!"
