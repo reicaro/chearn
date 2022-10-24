@@ -41,7 +41,7 @@ cd ios
 pod install
 ```
 
-Until openAI approves the application to go live the user will need to supply their individual openai key, set as ENV variable
+Until openAI approves the application to go live the user will need to supply their individual openai key, set as ENV variable OPENAI_API_KEY
 
 Run project
 
