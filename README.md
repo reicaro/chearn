@@ -1,6 +1,9 @@
 This is Chearner, my Software Studio project. Chearner aims to help the user manage their credit cards and maximize benefits.
 
 
+Installation and setup:
+
+Run npm install, navigate to the ios directory, and run pod install. If you don't have an openai key you can make a free one on the website, set it as an ENV variable and the app should be fully working.
 
 
 Features/bugs list (order of priority):
