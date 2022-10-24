@@ -11,7 +11,7 @@ Features/bugs list (order of priority):
 
 TODO: Add more comments
 
-Bug: Optimization call sometimes has " and breaks, can be fixed with a reload but still trying to figure out source
+~~Bug: Optimization call sometimes has " and breaks, can be fixed with a reload but still trying to figure out source~~
 
 Feature: Default apple pay card access (Through Apple, to change it without requiring the user to navigate to card in the wallet)
 
@@ -21,4 +21,4 @@ Feature: Analytics (Success vs errors for card selection, total saved, etc.)
 
 Bug: Remove deprecated packages
 
-Bug: Fix status bar being white
+~~Bug: Fix status bar being white~~
