@@ -17,6 +17,7 @@ import { getCurrency } from '../../utils/currency';
 import { getInfo, storeInfo } from '../../utils/card_factoring';
 import { getTransactions, getTotalPurchases, getTotalSavings, deleteTransaction } from '../../dbHelpers/transactionHelper';
 import { addCard, getCards } from '../../dbHelpers/cardcollection';
+import LinearGradient from 'react-native-linear-gradient'
 
 import QuickActions from '../../utils/quickActions';
 import CreditCard from '../../components/Cards/CreditCard';
@@ -82,8 +83,7 @@ const Home = ({navigation}) => {
 
     return (
         <View style={styles.container}>
-            {/* Header */}
-            <HomeHeader />
+            <HomeHeader/>
 
             {/* Body */}
             <View style={styles.bodyContainer}>
@@ -99,6 +99,7 @@ const Home = ({navigation}) => {
                         return(
                             <View>
                                 <SwipeableFlatList
+                                    style={{paddingLeft: 20}}
                                     data={cards}
                                     maxSwipeDistance={140}
                                     horizontal={true}
@@ -106,10 +107,11 @@ const Home = ({navigation}) => {
                                     showsVerticalScrollIndicator={false}
                                     keyExtractor={(item, index) => index.toString()}
                                     ListHeaderComponent={() => {
-                                        return(
-                                            <View>
-                                                <View style={{paddingLeft: 20}}>
-                                                </View>
+                                        return (
+                                            <View style={{paddingRight: 20}}>
+                                                <Pressable style={styles.addC} onPress={() => navigation.navigate(routes.AddCard)}>
+                                                    <Text style={[Typography.H3, {color: Colors.WHITE, textAlign: 'center'}]}>Add Card</Text>
+                                                </Pressable>
                                             </View>
                                         )
                                     }}
@@ -120,19 +122,11 @@ const Home = ({navigation}) => {
                                                             paddingRight: 10,
                                                             flexDirection: 'row',
                                                             backgroundColor: detColor(item.num)}}
-                                                        onPress={() => {console.log(cards)}}
+                                                        onPress={() => {}}
                                                     />
                                                     
                                                     </View>
                                                 
-                                    }}
-                                    ListFooterComponent={() => { 
-                                        return (
-                                            <Pressable style={styles.addC} onPress={() => navigation.navigate(routes.AddCard)}>
-                                                
-                                                <Text style={[Typography.H3, {color: Colors.WHITE, textAlign: 'center'}]}>Add Card</Text>
-                                            </Pressable>
-                                        )
                                     }}
                                 />
                                 <View style={{paddingLeft: 20}}>
@@ -182,9 +176,9 @@ const styles = StyleSheet.create({
     },
     addC: {
         flex: 1,
-        padding: 20,
-        paddingTop: 50,
-        paddingBottom: 50,
+        padding: 30,
+        paddingTop: 62.5,
+        paddingBottom: 62.5,
         backgroundColor: Colors.PRIMARY,
         borderRadius: 16,
         alignContent: 'center',

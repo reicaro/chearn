@@ -7,7 +7,11 @@ import {
     ScrollView,
     Text,
     TextInput,
-    TouchableOpacity
+    TouchableOpacity,
+    FlatList,
+    Modal,
+    ActivityIndicator,
+    SafeAreaView
 } from 'react-native';
 
 import { Colors, Typography } from '../../styles';
@@ -19,10 +23,12 @@ import { getCardList, storeCardList } from '../../utils/card_factoring';
 
 import BackHeader from '../../components/Headers/BackHeader';
 import Button from '../../components/Button';
-
+import Geolocation from '@react-native-community/geolocation';
 import { OpenAI } from 'openai-api';
+import axios from 'axios';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 //Waiting for approval, for now it has to be an env variable
-const apiKey = process.env.OPENAI_API_KEY;
+const apiKey = process.env.OPEN_AI_KEY;
 
 const Open = require('openai-api');
 
@@ -77,8 +83,32 @@ const AddTransaction = ({navigation, route}) => {
     const [cards, setCards] = useState(route.params.cards);
     const [cardInfo, setCardInfo] = useState(['Click to compute', '---- ---- ---- ----']);
     const [cardlist, setCardList] = useState([]);
+    const [properties, setProperties] = useState([]);
+    const [isPropertyLoading, setIsPropertyLoading] = useState(false);
+    const [propertiesListVisible, setPropertiesListVisible] = useState(false);
+
+    const getPropertyNearMe = () => {
+        const googleKey = process.env.GOOGLE_API_KEY;
+        setIsPropertyLoading(true);
+        Geolocation.getCurrentPosition(info => {
+            console.log('info22: ', info)
+            console.log(info?.coords?.latitude);
+            axios.get(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${info?.coords?.latitude},${info?.coords?.longitude}&rankby=distance&key=${googleKey}`)
+            .then((response) => {
+                console.log('response: ', response?.data?.results)
+                setProperties(response?.data?.results)
+                setPlace(response?.data?.results[0]?.name)
+                setIsPropertyLoading(false);
+            })
+            .catch((error) => {
+                console.log('error: ', error)
+                setIsPropertyLoading(false);
+            })
+        });
+    }
 
     useEffect(() => {
+        getPropertyNearMe()        
 
         if (route.params?.item) {
             setPlace({name: route.params.item.place});
@@ -144,7 +174,7 @@ const AddTransaction = ({navigation, route}) => {
         }
         await delay(3000);
         console.log("Waited 3s");
-        setCardInfo(['No Benefits Apply', 'Use Any Card']);
+        setCardInfo(['No Benefits Apply', 'N/a']);
     }
 
     // Save Transaction
@@ -169,7 +199,11 @@ const AddTransaction = ({navigation, route}) => {
                 {/* Amount */}
                 <View style={styles.inputContainer}>
                     <Text style={[Typography.TAGLINE, {color: Colors.BLUE_DARK}]}>Place</Text>
-                    <TextInput
+                    <TouchableOpacity style={{}} onPress={() => setPropertiesListVisible(true)}>
+                        <Text style={[styles.input, Typography.BODY, {paddingVertical: 16}]}>{place} {isPropertyLoading && <ActivityIndicator size="small" color={Colors.PRIMARY} />}</Text>
+                    </TouchableOpacity>
+
+                    {/* <TextInput
                         paddingTop={15}
                         paddingBottom={15}
                         value={place}
@@ -177,7 +211,7 @@ const AddTransaction = ({navigation, route}) => {
                         keyboardType='default'
                         onChangeText={(text) => setPlace(text)}
                         placeholderTextColor={Colors.PRIMARY}
-                        style={[styles.input, Typography.BODY]} />
+                        style={[styles.input, Typography.BODY]} /> */}
                 </View>
 
                 {/* Date */}
@@ -223,6 +257,34 @@ const AddTransaction = ({navigation, route}) => {
                     title='Save'
                     onPress={() => __save()} />
             </View>
+
+            <Modal
+                animationType="slide"
+                // transparent={true}
+                visible={propertiesListVisible}
+                onRequestClose={() => setPropertiesListVisible(false)}
+            >
+                <SafeAreaView style={{margin: 12}}>
+                    <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={{padding: 5, alignItems: 'flex-start'}}
+                        onPress={() => setPropertiesListVisible(false)}>
+                            <Icon name="chevron-left" color={Colors.BLUE_DARK} size={20} />
+                    </TouchableOpacity>
+                    {isPropertyLoading && <ActivityIndicator size="large" color={Colors.PRIMARY} />}
+                    <FlatList
+                        data={properties}
+                        renderItem={({item}) => (
+                            <TouchableOpacity style={styles.input} onPress={() => {setPlace(item.name); setPropertiesListVisible(false)}}>
+                                <Text style={[Typography.BODY, {color: Colors.BLUE_DARK}]}>{item.name}</Text>
+                            </TouchableOpacity>
+                        )}
+                        keyExtractor={item => item.place_id}
+                        showsVerticalScrollIndicator={false}
+                        style={{marginTop: 10, marginBottom: 40}}
+                    />
+                </SafeAreaView>
+            </Modal>
         </View>
     );
 };
@@ -267,6 +329,7 @@ const styles = StyleSheet.create({
 });
  
 export default AddTransaction;
+
 
 //generated by openai by inputting portions of the data Json, ccstack.ai didn't have an official key, so may not be fully accurate
 const keypairs = {

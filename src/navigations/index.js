@@ -31,7 +31,7 @@ function MyTabs() {
         initialRouteName={routes.Home}
         activeColor={Colors.PRIMARY}
         inactiveColor={Colors.BLUE_DARK}
-        barStyle={[Typography.BODY, { backgroundColor: Colors.MAIN, borderTopWidth: 0.3 }]}>
+        barStyle={[Typography.BODY, { backgroundColor: Colors.MAIN, borderTopWidth: 0.5, borderTopColor: Colors.Primary}]}>
             <Tab.Screen 
                 name={routes.Home} 
                 component={Home}
@@ -71,18 +71,21 @@ const RootNavigator = () => {
           <Stack.Navigator
             screenOptions={{
               headerShown: false,
-            }}>
+            }}
+            animation="fade"
+            >
+            
             {state.isLoading ?
               <Stack.Screen name={routes.Splash} component={Splash} />
             : state.user == null ? 
               <>
                 <Stack.Screen name={routes.GetStarted} component={GetStarted} />
-                <Stack.Screen name={routes.Login} component={Login} />
+                <Stack.Screen name={routes.Login} component={Login}/>
               </>
             : 
               <>
-                <Stack.Screen name='MyTabs' component={MyTabs} />
-                <Stack.Screen name={routes.Errors} component={Errors} />
+                <Stack.Screen name='MyTabs' component={MyTabs}/>
+                <Stack.Screen name={routes.Errors} component={Errors}/>
                 <Stack.Screen name={routes.AddTransaction} component={AddTransaction} />
                 <Stack.Screen name={routes.AddCard} component={AddCard} />
               </>

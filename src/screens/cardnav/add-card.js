@@ -52,7 +52,7 @@ const AddCard = ({navigation, route}) => {
         const stringType = fuz(type).toString();
         console.log('type: ' + stringType);
         addCard({
-            num: stringNum,
+            num: stringNum.replace(/ /g, ''),
             company: stringCompany,
             type: stringType,
         });
@@ -63,6 +63,11 @@ const AddCard = ({navigation, route}) => {
     const __save = () => {
          __insert();
         navigation.goBack();
+    }
+
+    const formatCardNumber = (text) => {
+        let newText = text?.replace(/ /g, '')?.match(/.{1,4}/g)?.join(' ');
+        setNum(newText);
     }
 
     return (
@@ -85,7 +90,7 @@ const AddCard = ({navigation, route}) => {
                         value={num}
                         placeholder='eg: 1234 5678 9876 5432'
                         keyboardType='numeric'
-                        onChangeText={(text) => setNum(text)}
+                        onChangeText={(text) => formatCardNumber(text)}
                         placeholderTextColor={Colors.PRIMARY}
                         maxLength={19}
                         style={[styles.input, Typography.BODY]} />

@@ -13,8 +13,21 @@ import { Colors, Typography } from '../../../styles';
 const CreditCard = (props) => {
     const company = props.company;
     const num = props.num;
-    const color = props.color;
-    
+
+    const censoredNum = num.trim().replace(/ /g, '').replace(/\d(?=\d{4})/g, "*");
+    let numberDesign = new Array()
+    for(i = 0; i < censoredNum.length; i++) {
+        if(censoredNum[i] == "*") {
+            numberDesign.push(
+                <View key={i} style={{height: 8, width: 8, borderRadius: 4, marginHorizontal: 2, backgroundColor: 'white', alignSelf: 'center', marginRight: (i+1)%4 == 0 ? 4 : 0}}></View>
+            )
+        }else{
+            numberDesign.push(
+                <Text key={i} style={[Typography.H3, {color: Colors.WHITE, marginRight: (i+1)%4 == 0 ? 4 : 0}]}>{censoredNum[i]}</Text>
+            );
+        }
+    }
+
     return (
         <View style={[props.style]}>
             {props?.onPress ?
@@ -23,7 +36,9 @@ const CreditCard = (props) => {
                     onPress={props.onPress}>
                         <View style={styles.blockContainer}>
                             <Text style={[Typography.H3, {color: Colors.WHITE, marginBottom: 60}]}>{company}</Text>
-                            <Text style={[Typography.H3, {color: Colors.WHITE}]}>{num}</Text>
+                            <View style={{flexDirection: 'row'}}>
+                                {numberDesign}
+                            </View>
                         </View>
                 </Pressable>
             : null}
@@ -53,4 +68,3 @@ const styles = StyleSheet.create({
 });
  
 export default CreditCard;
- 
