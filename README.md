@@ -14,9 +14,8 @@ It was built using majority React Native, SQLite, and Python. I used some APIs f
 * TODO: Add more comments
 * ~~Bug: Optimization call sometimes has " and breaks, can be fixed with a reload but still trying to figure out source~~
 * Feature: Default apple pay card access (Through Apple, to change it without requiring the user to navigate to card in the wallet)
-* Feature: Geolocation and background activity (Automatically select right card based on store user is in)
+* Feature: ~~Geolocation~~ and background activity (Automatically select right card based on store user is in)
 * Feature: Analytics (Success vs errors for card selection, total saved, etc.)
-* Bug: Remove deprecated packages
 * ~~Bug: Fix status bar being white~~
 
 ## Installation and setup:
@@ -42,6 +41,8 @@ pod install
 ```
 
 Until openAI approves the application to go live the user will need to supply their individual openai key, set as ENV variable OPENAI_API_KEY
+
+With google maps integration added, there's now a project specific API key with places enabled and billing set up on free trial, if needed message me on discord reіd#0001 (copy and paste) and I'll help.
 
 Run project
 
