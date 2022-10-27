@@ -1,7 +1,7 @@
 # Chearner
 This is a project that aims to optimize credit card benefits and management. 
 
-It was built using majority React Native, SQLite, and Python. I used some APIs for the project, including CCstack.io and openai.com.
+It was built using majority React Native, SQLite, and Python. I used some APIs for the project, including CCstack.io, Google Places, and openai.com.
 
 ## Current Functionality
 * Card identification and storage
