@@ -1,24 +1,54 @@
-This is Chearner, my Software Studio project. Chearner aims to help the user manage their credit cards and maximize benefits.
+# Chearner
+This is a project that aims to optimize credit card benefits and management. 
 
+It was built using majority React Native, SQLite, and Python. I used some APIs for the project, including CCstack.io and openai.com.
 
+## Current Functionality
+* Card identification and storage
+* Credit optimization based on card benefits
+* Transaction history and updates
 
+## Roadmap (order of priority)
+* ~~Bug: Fix app state needing to be reloaded after state changes (new card added doesn't get included in optimization till reload, new sign name doesn't automatically reload)~~
+* ~~Bug: Edit transaction breaks~~
+* TODO: Add more comments
+* ~~Bug: Optimization call sometimes has " and breaks, can be fixed with a reload but still trying to figure out source~~
+* Feature: Default apple pay card access (Through Apple, to change it without requiring the user to navigate to card in the wallet)
+* Feature: Geolocation and background activity (Automatically select right card based on store user is in)
+* Feature: Analytics (Success vs errors for card selection, total saved, etc.)
+* Bug: Remove deprecated packages
+* ~~Bug: Fix status bar being white~~
 
-Features/bugs list (order of priority):
+## Installation and setup:
 
-~~Bug: Fix app state needing to be reloaded after state changes (new card added doesn't get included in optimization till reload, new sign name doesn't automatically reload)~~
+Clone the project
 
-~~Bug: Edit transaction breaks~~
+```
+git clone https://github.com/reicaro/chearner
+```
 
-TODO: Add more comments
+Install dependencies
 
-Bug: Optimization call sometimes has " and breaks, can be fixed with a reload but still trying to figure out source
+```
+npm install
+```
 
-Feature: Default apple pay card access (Through Apple, to change it without requiring the user to navigate to card in the wallet)
+```
+cd ios
+```
 
-Feature: Geolocation and background activity (Automatically select right card based on store user in in)
+```
+pod install
+```
 
-Feature: Analytics (Success vs errors for card selection, total saved, etc.)
+Until openAI approves the application to go live the user will need to supply their individual openai key, set as ENV variable OPENAI_API_KEY
 
-Bug: Remove deprecated packages
+Run project
 
-Bug: Fix status bar being white
+```
+cd ..
+```
+
+```
+npx react-native run-ios
+```
