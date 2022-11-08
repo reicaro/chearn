@@ -1,0 +1,6 @@
+module RNCardScanner {
+  umbrella header "RNCardScanner-umbrella.h"
+
+  export *
+  module * { export * }
+}

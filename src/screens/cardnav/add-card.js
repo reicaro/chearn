@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react';
+import CardScanner from 'rn-card-scanner';
 import Feather from "react-native-vector-icons/Feather";
 Feather.loadFont();
 import {
@@ -83,6 +84,12 @@ const AddCard = ({navigation, route}) => {
                 <View style={styles.spacer}>
 
                 </View>
+                <CardScanner
+                    style={{ flex: 1 }}
+                    didCardScan={(response) => {
+                        console.log('Card info: ', response);
+                    }}
+                />
                 {/* Amount */}
                 <View style={styles.inputContainer}>
                     <Text style={[Typography.TAGLINE, {color: Colors.BLUE_DARK}]}>Card Number</Text>

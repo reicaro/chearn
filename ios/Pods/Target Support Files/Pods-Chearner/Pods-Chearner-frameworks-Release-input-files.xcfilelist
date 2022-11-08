@@ -1,1 +1,2 @@
 ${PODS_ROOT}/Target Support Files/Pods-Chearner/Pods-Chearner-frameworks.sh
+${PODS_XCFRAMEWORKS_BUILD_DIR}/RNCardScanner/PayCardsRecognizer.framework/PayCardsRecognizer

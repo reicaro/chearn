@@ -1,0 +1,1 @@
+../../../../../node_modules/rn-card-scanner/ios/CardScanner/CardScanner-Bridging-Header.h
