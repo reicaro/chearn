@@ -130,7 +130,6 @@ const AddCard = ({navigation, route}) => {
                     <TextInput
                         value={type}
                         placeholder='eg: Sapphire, Premier, Travel Plus'
-                        keyboardType='numeric'
                         onChangeText={(text) => setType(text)}
                         placeholderTextColor={Colors.PRIMARY}
                         style={[styles.input, Typography.BODY]} />
