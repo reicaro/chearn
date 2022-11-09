@@ -101,6 +101,7 @@ const AddCard = ({navigation, route}) => {
                 </View>
                 <CardScanner
                     style={{ flex: 1 }}
+                    useAppleVision={true}
                     didCardScan={(response) => {
                         console.log('Card info: ', response);
                     }}
