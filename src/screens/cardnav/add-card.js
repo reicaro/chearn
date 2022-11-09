@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
 import CardScanner from 'rn-card-scanner';
 import Feather from "react-native-vector-icons/Feather";
 Feather.loadFont();
@@ -19,12 +19,14 @@ import Button from '../../components/Button';
 //import {request, PERMISSIONS} from 'react-native-permissions';
 //import {request} from 'react-native-permissions';
 //import * as permissions from 'react-native-permissions';
-import {check, PERMISSIONS, RESULTS} from 'react-native-permissions';
+import {check, PERMISSIONS, RESULTS, request} from 'react-native-permissions';
 
 const AddCard = ({navigation, route}) => {
     const [num, setNum] = useState('');
     const [company, setCompany] = useState('');
     const [type, setType] = useState('');
+    const cardScannerRef = useRef(null)
+
 
     useEffect(() => {
         console.log(check, "AHHHHH");
@@ -79,11 +81,14 @@ const AddCard = ({navigation, route}) => {
     const TEMP__handleCardScan = () => {
         console.log("clicked");
 
-        //permissions.request(Platform.OS === 'ios' ? PERMISSIONS.IOS.CAMERA : PERMISSIONS.ANDROID.CAMERA).then((result) => {
-        //    //setPermissionResult(result)
-        //    console.log(result)
-        //});
-        //console.log(PERMISSIONS.IOS.CAMERA)
+        request(Platform.OS === 'ios' ? PERMISSIONS.IOS.CAMERA : PERMISSIONS.ANDROID.CAMERA).then((result) => {
+            //setPermissionResult(result)
+            console.log(result)
+            if (result === RESULTS.GRANTED) {
+                cardScannerRef.current.startCamera(); //@jack this doesn't do anything??? who knows bro
+            }
+        });
+        console.log(PERMISSIONS.IOS.CAMERA)
     }
 
     return (
@@ -101,7 +106,8 @@ const AddCard = ({navigation, route}) => {
                 </View>
                 <CardScanner
                     style={{ flex: 1 }}
-                    useAppleVision={true}
+                    //useAppleVision={true}
+                    ref={cardScannerRef}
                     didCardScan={(response) => {
                         console.log('Card info: ', response);
                     }}
