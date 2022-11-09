@@ -30,6 +30,8 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 //Waiting for approval, for now it has to be an env variable
 const apiKey = process.env.OPEN_AI_KEY;
 
+import {request, Camera} from 'react-native-permissions';
+
 const Open = require('openai-api');
 
 const openai = new Open(apiKey);
@@ -108,7 +110,7 @@ const AddTransaction = ({navigation, route}) => {
     }
 
     useEffect(() => {
-        getPropertyNearMe()        
+        getPropertyNearMe()
 
         if (route.params?.item) {
             setPlace({name: route.params.item.place});
@@ -179,7 +181,7 @@ const AddTransaction = ({navigation, route}) => {
 
     // Save Transaction
     const __save = () => {
-        
+
         if (route.params?.item) {
             __update();
         }
@@ -217,7 +219,7 @@ const AddTransaction = ({navigation, route}) => {
                 {/* Date */}
                 <View style={styles.inputContainer}>
                     <Text style={[Typography.TAGLINE, {color: Colors.BLUE_DARK}]}>Date</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={''}
                         style={[styles.input, {paddingTop: 15, paddingBottom: 15}]}>
                             <Text style={[Typography.BODY, {color: Colors.BLUE_DARK}]}>{date.toDateString()}</Text>
@@ -253,7 +255,7 @@ const AddTransaction = ({navigation, route}) => {
 
             {/* Footer */}
             <View style={styles.footerContainer}>
-                <Button 
+                <Button
                     title='Save'
                     onPress={() => __save()} />
             </View>
@@ -327,7 +329,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
 });
- 
+
 export default AddTransaction;
 
 
@@ -350,7 +352,7 @@ const keypairs = {
     16:"Supermarkets",
     17:"Utilities"
 }
- 
+
 const data = {
     "Avenue Premier": [
         1,

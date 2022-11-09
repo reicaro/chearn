@@ -29,8 +29,10 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Location is required to find nearby places.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Location is required to find nearby places.</string>
-	
+        <string>Location is required to find nearby places.</string>
+        <key>NSCameraUsageDescription</key>
+        <string>Camera is required to scan cards.</string>
+
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSExceptionDomains</key>
