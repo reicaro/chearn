@@ -24,6 +24,7 @@ import { getCardList, storeCardList } from '../../utils/card_factoring';
 import BackHeader from '../../components/Headers/BackHeader';
 import Button from '../../components/Button';
 import Geolocation from '@react-native-community/geolocation';
+import BackgroundActivity from "./background-activity";
 import { OpenAI } from 'openai-api';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/FontAwesome5';
@@ -193,6 +194,7 @@ const AddTransaction = ({navigation, route}) => {
 
     return (
         <View style={styles.container}>
+            <BackgroundActivity />
             {/* Header */}
             <BackHeader title={route.params?.item ? 'Edit Transaction' : 'New Transaction'} />
 
