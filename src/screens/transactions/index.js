@@ -29,7 +29,7 @@ function TopTabs(props) {
                 lazy: true,
                 tabBarActiveTintColor: Colors.PRIMARY,
                 tabBarLabelStyle: [Typography.TAGLINE, {color: Colors.BLUE_DARK}],
-                tabBarStyle: { 
+                tabBarStyle: {
                     backgroundColor: Colors.MAIN,
                 },
                 tabBarIndicatorStyle: {
@@ -105,6 +105,6 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.BLUE_MEDIUM
     },
 });
- 
+
 export default Transactions;
- 
+

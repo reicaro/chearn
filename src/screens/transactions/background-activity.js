@@ -4,7 +4,7 @@ import BackgroundGeolocation from '@mauron85/react-native-background-geolocation
 
 const BackgroundActivity = () => {
     useEffect(() => {
-        console.log("mounting background activity");
+        console.log("mounting background-activity");
         BackgroundGeolocation.configure({
             desiredAccuracy: BackgroundGeolocation.HIGH_ACCURACY,
             stationaryRadius: 50,
@@ -31,17 +31,17 @@ const BackgroundActivity = () => {
             }
         });
 
-
-        BackgroundGeolocation.on('background', () => {
-            console.log('[INFO] App is in background');
-        });
-
-
         return () => {
             BackgroundGeolocation.removeAllListeners();
         };
 
     }, []);
+
+    BackgroundGeolocation.on('background', () => {
+        console.log('[INFO] App is in background');
+    });
+
+    return <></>;
 }
 
 export default BackgroundActivity;

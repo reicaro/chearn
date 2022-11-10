@@ -112,6 +112,7 @@ const AddTransaction = ({navigation, route}) => {
 
     useEffect(() => {
         getPropertyNearMe()
+        console.log("mounting ad-transaction")
 
         if (route.params?.item) {
             setPlace({name: route.params.item.place});
@@ -194,7 +195,6 @@ const AddTransaction = ({navigation, route}) => {
 
     return (
         <View style={styles.container}>
-            <BackgroundActivity />
             {/* Header */}
             <BackHeader title={route.params?.item ? 'Edit Transaction' : 'New Transaction'} />
 
@@ -257,6 +257,9 @@ const AddTransaction = ({navigation, route}) => {
 
             {/* Footer */}
             <View style={styles.footerContainer}>
+                <BackgroundActivity
+                    // TEMP TEMP JANK TODO FIXME
+                />
                 <Button
                     title='Save'
                     onPress={() => __save()} />
