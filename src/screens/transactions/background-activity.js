@@ -12,8 +12,8 @@ const BackgroundActivity = () => {
             notificationTitle: 'Background tracking',
             notificationText: 'enabled',
             debug: true,
-            startOnBoot: false,
-            stopOnTerminate: true,
+            startOnBoot: true,
+            stopOnTerminate: false,
             locationProvider: BackgroundGeolocation.ACTIVITY_PROVIDER,
             interval: 10000,
             fastestInterval: 5000,
@@ -32,6 +32,7 @@ const BackgroundActivity = () => {
         });
 
         return () => {
+            console.log("unmounting background-activity");
             BackgroundGeolocation.removeAllListeners();
         };
 
@@ -39,6 +40,33 @@ const BackgroundActivity = () => {
 
     BackgroundGeolocation.on('background', () => {
         console.log('[INFO] App is in background');
+    });
+
+
+
+    BackgroundGeolocation.on('location', (location) => {
+        // handle your locations here
+        // to perform long running operation on iOS
+        // you need to create background task
+        console.log(location, "THIS IS RUNNING")
+        //BackgroundGeolocation.startTask(taskKey => {
+        //    // execute long running task
+        //    // eg. ajax post location
+        //    // IMPORTANT: task has to be ended by endTask
+        //    BackgroundGeolocation.endTask(taskKey);
+        //});
+    });
+
+
+    BackgroundGeolocation.checkStatus(status => {
+        console.log('[INFO] BackgroundGeolocation service is running', status.isRunning);
+        console.log('[INFO] BackgroundGeolocation services enabled', status.locationServicesEnabled);
+        console.log('[INFO] BackgroundGeolocation auth status: ' + status.authorization);
+
+        // you don't need to check status before start (this is just the example)
+        if (!status.isRunning) {
+            BackgroundGeolocation.start(); //triggers start on start event
+        }
     });
 
     return <></>;
