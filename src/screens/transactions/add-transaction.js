@@ -24,7 +24,6 @@ import { getCardList, storeCardList } from '../../utils/card_factoring';
 import BackHeader from '../../components/Headers/BackHeader';
 import Button from '../../components/Button';
 import Geolocation from '@react-native-community/geolocation';
-import BackgroundActivity from "./background-activity";
 import { OpenAI } from 'openai-api';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/FontAwesome5';
@@ -257,9 +256,6 @@ const AddTransaction = ({navigation, route}) => {
 
             {/* Footer */}
             <View style={styles.footerContainer}>
-                <BackgroundActivity
-                    // TEMP TEMP JANK TODO FIXME
-                />
                 <Button
                     title='Save'
                     onPress={() => __save()} />
