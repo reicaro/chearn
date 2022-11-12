@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useContext} from 'react';
 import Feather from "react-native-vector-icons/Feather";
 Feather.loadFont();
 import {
@@ -32,7 +32,7 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 const apiKey = process.env.OPEN_AI_KEY;
 
 import {request, Camera} from 'react-native-permissions';
-import { useContext } from 'react/cjs/react.production.min';
+// import { useContext } from 'react/cjs/react.production.min';
 
 const Open = require('openai-api');
 
@@ -91,28 +91,25 @@ const AddTransaction = ({navigation, route}) => {
     const [isPropertyLoading, setIsPropertyLoading] = useState(false);
     const [propertiesListVisible, setPropertiesListVisible] = useState(false);
 
-    const getPropertyNearMe = () => {
-        const googleKey = process.env.GOOGLE_API_KEY;
-        setIsPropertyLoading(true);
-        Geolocation.getCurrentPosition(info => {
-            console.log('info22: ', info)
-            console.log(info?.coords?.latitude);
-            axios.get(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${info?.coords?.latitude},${info?.coords?.longitude}&rankby=distance&key=${googleKey}`)
-            .then((response) => {
-                console.log('response: ', response?.data?.results)
-                setProperties(response?.data?.results)
-                setPlace(response?.data?.results[0]?.name)
-                setIsPropertyLoading(false);
-            })
-            .catch((error) => {
-                console.log('error: ', error)
-                setIsPropertyLoading(false);
-            })
-        });
-    }
+    const location = useContext(LocationContext);
 
     useEffect(() => {
-        getPropertyNearMe()
+        if (!location) {
+            // on load the LocationContext will be falsy
+            // before a loctaion is identified
+            setIsPropertyLoading(true);
+        } else {
+            // consume the location context
+            let response = location.rawResults;
+            let place = location.currentLocation;
+            // get results
+            setProperties(response.results);
+            setPlace(place);
+            setIsPropertyLoading(false);
+        }
+    }, [location]);
+    
+    useEffect(() => {
         console.log("mounting ad-transaction")
 
         if (route.params?.item) {

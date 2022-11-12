@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import BackgroundGeolocation from '@mauron85/react-native-background-geolocation';
 
 // Create the location context
-const LocationContext = React.createContext();
+const LocationContext = React.createContext(null);
 
 function LocationProvider({children}) {
 
