@@ -21,6 +21,7 @@ import { getCards, addCard } from '../../dbHelpers/cardcollection';
 import { useIsFocused } from '@react-navigation/native';
 import { getCardList, storeCardList } from '../../utils/card_factoring';
 
+import LocationContext from "../../context/LocationContext.js";
 import BackHeader from '../../components/Headers/BackHeader';
 import Button from '../../components/Button';
 import Geolocation from '@react-native-community/geolocation';
@@ -31,6 +32,7 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 const apiKey = process.env.OPEN_AI_KEY;
 
 import {request, Camera} from 'react-native-permissions';
+import { useContext } from 'react/cjs/react.production.min';
 
 const Open = require('openai-api');
 
