@@ -28,7 +28,7 @@ import BackgroundGeolocation from '@mauron85/react-native-background-geolocation
 const Stack = createStackNavigator();
 const Tab = createMaterialBottomTabNavigator();
 
-// Bottom Tab Bar Navigator
+// Bottom Tab Bar Navigatormaly.io
 
 function MyTabs() {
     return (
@@ -96,7 +96,8 @@ const RootNavigator = () => {
                 // serialize location
                 const [lat,long] = [location.latitude, location.longitude];
                 // TODO send google API call
-                // axios.get(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${info?.coords?.latitude},${info?.coords?.longitude}&rankby=distance&key=${googleKey}`)
+                let tmp = axios.get(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${long}&rankby=distance&key=${googleKey}`)
+                console.log(tmp, lat, long);
                 // IMPORTANT: task has to be ended by endTask
                 BackgroundGeolocation.endTask(taskKey);
                 // otherwise ye shall have :tada: memeory leaks :tada:
