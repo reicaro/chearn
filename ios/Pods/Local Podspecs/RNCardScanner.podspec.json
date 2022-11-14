@@ -1,0 +1,34 @@
+{
+  "name": "RNCardScanner",
+  "version": "1.1.1",
+  "summary": "Credit card scanner for React Native",
+  "homepage": "https://github.com/howljs/rn-card-scanner#readme",
+  "license": "MIT",
+  "authors": "Howl <j2team.lbh@gmail.com> (https://github.com/howljs)",
+  "platforms": {
+    "ios": "10.0"
+  },
+  "source": {
+    "git": "https://github.com/howljs/rn-card-scanner.git",
+    "tag": "1.1.1"
+  },
+  "vendored_frameworks": "ios/CardScanner/PayCardsRecognizer.xcframework",
+  "source_files": [
+    "ios/CardScanner/*.{h,m,mm,swift}",
+    "ios/CardScanner/AppleVision/*.{h,m,mm,swift}"
+  ],
+  "requires_arc": true,
+  "pod_target_xcconfig": {
+    "DEFINES_MODULE": "YES"
+  },
+  "resource_bundles": {
+    "PortraitFrame": [
+      "ios/CardScanner/AppleVision/Resources/*.png"
+    ]
+  },
+  "dependencies": {
+    "React-Core": [
+
+    ]
+  }
+}

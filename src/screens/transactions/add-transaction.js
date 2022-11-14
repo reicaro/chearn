@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useContext} from 'react';
 import Feather from "react-native-vector-icons/Feather";
 Feather.loadFont();
 import {
@@ -21,6 +21,7 @@ import { getCards, addCard } from '../../dbHelpers/cardcollection';
 import { useIsFocused } from '@react-navigation/native';
 import { getCardList, storeCardList } from '../../utils/card_factoring';
 
+import LocationContext from "../../context/LocationContext.js";
 import BackHeader from '../../components/Headers/BackHeader';
 import Button from '../../components/Button';
 import Geolocation from '@react-native-community/geolocation';
@@ -29,6 +30,9 @@ import axios from 'axios';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 //Waiting for approval, for now it has to be an env variable
 const apiKey = process.env.OPEN_AI_KEY;
+
+import {request, Camera} from 'react-native-permissions';
+// import { useContext } from 'react/cjs/react.production.min';
 
 const Open = require('openai-api');
 
@@ -87,28 +91,26 @@ const AddTransaction = ({navigation, route}) => {
     const [isPropertyLoading, setIsPropertyLoading] = useState(false);
     const [propertiesListVisible, setPropertiesListVisible] = useState(false);
 
-    const getPropertyNearMe = () => {
-        const googleKey = process.env.GOOGLE_API_KEY;
-        setIsPropertyLoading(true);
-        Geolocation.getCurrentPosition(info => {
-            console.log('info22: ', info)
-            console.log(info?.coords?.latitude);
-            axios.get(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${info?.coords?.latitude},${info?.coords?.longitude}&rankby=distance&key=${googleKey}`)
-            .then((response) => {
-                console.log('response: ', response?.data?.results)
-                setProperties(response?.data?.results)
-                setPlace(response?.data?.results[0]?.name)
-                setIsPropertyLoading(false);
-            })
-            .catch((error) => {
-                console.log('error: ', error)
-                setIsPropertyLoading(false);
-            })
-        });
-    }
+    const location = useContext(LocationContext);
 
     useEffect(() => {
-        getPropertyNearMe()        
+        if (!location) {
+            // on load the LocationContext will be falsy
+            // before a loctaion is identified
+            setIsPropertyLoading(true);
+        } else {
+            // consume the location context
+            let response = location.rawResults;
+            let place = location.currentLocation;
+            // get results
+            setProperties(response.results);
+            setPlace(place);
+            setIsPropertyLoading(false);
+        }
+    }, [location]);
+    
+    useEffect(() => {
+        console.log("mounting ad-transaction")
 
         if (route.params?.item) {
             setPlace({name: route.params.item.place});
@@ -179,7 +181,7 @@ const AddTransaction = ({navigation, route}) => {
 
     // Save Transaction
     const __save = () => {
-        
+
         if (route.params?.item) {
             __update();
         }
@@ -217,7 +219,7 @@ const AddTransaction = ({navigation, route}) => {
                 {/* Date */}
                 <View style={styles.inputContainer}>
                     <Text style={[Typography.TAGLINE, {color: Colors.BLUE_DARK}]}>Date</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={''}
                         style={[styles.input, {paddingTop: 15, paddingBottom: 15}]}>
                             <Text style={[Typography.BODY, {color: Colors.BLUE_DARK}]}>{date.toDateString()}</Text>
@@ -253,7 +255,7 @@ const AddTransaction = ({navigation, route}) => {
 
             {/* Footer */}
             <View style={styles.footerContainer}>
-                <Button 
+                <Button
                     title='Save'
                     onPress={() => __save()} />
             </View>
@@ -327,7 +329,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
 });
- 
+
 export default AddTransaction;
 
 
@@ -350,7 +352,7 @@ const keypairs = {
     16:"Supermarkets",
     17:"Utilities"
 }
- 
+
 const data = {
     "Avenue Premier": [
         1,

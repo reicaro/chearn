@@ -1,4 +1,5 @@
 ${PODS_ROOT}/Target Support Files/Pods-Chearner/Pods-Chearner-resources.sh
+${PODS_CONFIGURATION_BUILD_DIR}/RNCardScanner/PortraitFrame.bundle
 ${PODS_ROOT}/../../node_modules/react-native-vector-icons/Fonts/AntDesign.ttf
 ${PODS_ROOT}/../../node_modules/react-native-vector-icons/Fonts/Entypo.ttf
 ${PODS_ROOT}/../../node_modules/react-native-vector-icons/Fonts/EvilIcons.ttf

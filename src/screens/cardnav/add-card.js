@@ -1,4 +1,5 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
+import CardScanner from 'rn-card-scanner';
 import Feather from "react-native-vector-icons/Feather";
 Feather.loadFont();
 import {
@@ -15,13 +16,20 @@ import { Colors, Typography } from '../../styles';
 import { addCard, identify, fuz } from '../../dbHelpers/cardcollection';
 import BackHeader from '../../components/Headers/BackHeader';
 import Button from '../../components/Button';
+//import {request, PERMISSIONS} from 'react-native-permissions';
+//import {request} from 'react-native-permissions';
+//import * as permissions from 'react-native-permissions';
+import {check, PERMISSIONS, RESULTS, request} from 'react-native-permissions';
 
 const AddCard = ({navigation, route}) => {
     const [num, setNum] = useState('');
     const [company, setCompany] = useState('');
     const [type, setType] = useState('');
+    const cardScannerRef = useRef(null)
+
 
     useEffect(() => {
+        console.log(check, "AHHHHH");
         if (route.params?.item) {
             setType((route.params.item.type).toString());
             setNum((route.params.item.num).toString());
@@ -29,7 +37,7 @@ const AddCard = ({navigation, route}) => {
         else {
             console.log('reached');
         }
-        
+
     }, []);
 
     // Insert Card
@@ -46,7 +54,7 @@ const AddCard = ({navigation, route}) => {
             console.log(num);
         }
 
-       
+
         const stringNum = num.toString();
         const stringCompany = c;
         const stringType = fuz(type).toString();
@@ -70,6 +78,19 @@ const AddCard = ({navigation, route}) => {
         setNum(newText);
     }
 
+    const TEMP__handleCardScan = () => {
+        console.log("clicked");
+
+        request(Platform.OS === 'ios' ? PERMISSIONS.IOS.CAMERA : PERMISSIONS.ANDROID.CAMERA).then((result) => {
+            //setPermissionResult(result)
+            console.log(result)
+            if (result === RESULTS.GRANTED) {
+                cardScannerRef.current.startCamera(); //@jack this doesn't do anything??? who knows bro
+            }
+        });
+        console.log(PERMISSIONS.IOS.CAMERA)
+    }
+
     return (
         <View style={styles.container}>
             {/* Header */}
@@ -83,7 +104,16 @@ const AddCard = ({navigation, route}) => {
                 <View style={styles.spacer}>
 
                 </View>
+                <CardScanner
+                    style={{ flex: 1 }}
+                    //useAppleVision={true}
+                    ref={cardScannerRef}
+                    didCardScan={(response) => {
+                        console.log('Card info: ', response);
+                    }}
+                />
                 {/* Amount */}
+                <Button onPress={TEMP__handleCardScan}> HERE </Button>
                 <View style={styles.inputContainer}>
                     <Text style={[Typography.TAGLINE, {color: Colors.BLUE_DARK}]}>Card Number</Text>
                     <TextInput
@@ -100,7 +130,6 @@ const AddCard = ({navigation, route}) => {
                     <TextInput
                         value={type}
                         placeholder='eg: Sapphire, Premier, Travel Plus'
-                        keyboardType='numeric'
                         onChangeText={(text) => setType(text)}
                         placeholderTextColor={Colors.PRIMARY}
                         style={[styles.input, Typography.BODY]} />
@@ -109,7 +138,7 @@ const AddCard = ({navigation, route}) => {
 
             {/* Footer */}
             <View style={styles.footerContainer}>
-                <Button 
+                <Button
                     title='Save'
                     onPress={() => __save()} />
             </View>
@@ -153,7 +182,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
 });
- 
+
 export default AddCard;
- 
+
 

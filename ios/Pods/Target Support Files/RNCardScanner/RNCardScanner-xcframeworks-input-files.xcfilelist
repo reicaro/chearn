@@ -1,0 +1,2 @@
+${PODS_ROOT}/Target Support Files/RNCardScanner/RNCardScanner-xcframeworks.sh
+${PODS_ROOT}/../../node_modules/rn-card-scanner/ios/CardScanner/PayCardsRecognizer.xcframework
