@@ -7,15 +7,18 @@ It was built using majority React Native, SQLite, and Python. I used some APIs f
 * Card identification and storage
 * Credit optimization based on card benefits
 * Transaction history and updates
+* Automatic Geolocation
+* Camera Implementation
+* Sign in and async storage
 
 ## Roadmap (order of priority)
+* Feature: Default apple pay card access (Through Apple, to change it without requiring the user to navigate to card in the wallet)
+* Feature: Analytics (Success vs errors for card selection, total saved, etc.)
 * ~~Bug: Fix app state needing to be reloaded after state changes (new card added doesn't get included in optimization till reload, new sign name doesn't automatically reload)~~
 * ~~Bug: Edit transaction breaks~~
-* TODO: Add more comments
+* ~~TODO: Add more comments~~
 * ~~Bug: Optimization call sometimes has " and breaks, can be fixed with a reload but still trying to figure out source~~
-* Feature: Default apple pay card access (Through Apple, to change it without requiring the user to navigate to card in the wallet)
-* Feature: ~~Geolocation~~ and background activity (Automatically select right card based on store user is in)
-* Feature: Analytics (Success vs errors for card selection, total saved, etc.)
+* ~~Feature: Geolocation and background activity (Automatically select right card based on store user is in)
 * ~~Bug: Fix status bar being white~~
 
 ## Installation and setup:
