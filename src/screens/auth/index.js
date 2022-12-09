@@ -6,6 +6,7 @@ import {
     View,
     Image,
     Text,
+    TouchableOpacity
 } from 'react-native';
 
 import routes from '../../config/routes';
@@ -24,18 +25,21 @@ const GetStarted = ({navigation, route}) => {
                     style={{ width: 200, height: 200}}
                     source={require('../../assets/images/logo.png')} />
                 
-                <Text style={[Typography.H5,{color: Colors.BLUE_DARK}]}>Ch
+                <Text style={[Typography.H5,{color: Colors.BLUE_DARK}]}>ch
                 <Text style ={{color: Colors.PRIMARY}}>earn</Text>
-                er</Text>
+                </Text>
                 
                 
             </View>
 
             {/* Footer */}
             <View style={styles.footerContainer}>
-                <Button 
-                    title='Get Started'
-                    onPress={() => navigation.navigate(routes.Login)} />
+            <TouchableOpacity style={[Typography.H1, {padding: 20,
+        marginTop: 20,
+        borderRadius: 10,
+        alignItems: 'center',backgroundColor: Colors.PRIMARY}]} onPress={() => navigation.navigate(routes.Login)}>
+                <Text style={[Typography.H1, {textAlign: 'center', color: Colors.WHITE}]}>Get Started</Text>
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -44,7 +48,7 @@ const GetStarted = ({navigation, route}) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.MAIN
+        backgroundColor: Colors.WHITE
     },
     // Body
     bodyContainer: {
@@ -55,11 +59,11 @@ const styles = StyleSheet.create({
     },
     title: {
         textAlign: 'center',
-        color: Colors.BLUE_DARK
+        color: Colors.WHITE
     },
     // Footer
     footerContainer: {
-        padding: 20,
+        padding: 30,
     },
 });
  

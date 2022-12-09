@@ -29,7 +29,6 @@ const TransactionCard = (props) => {
 const styles = StyleSheet.create({
     container: {
         marginTop: 10,
-        marginLeft: 20,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: Colors.BLUE_MEDIUM,

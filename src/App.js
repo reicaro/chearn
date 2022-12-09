@@ -24,10 +24,10 @@ const App = () => {
     );
 };
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.MAIN
-    },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.WHITE
+  },
 });
 
 export default App;

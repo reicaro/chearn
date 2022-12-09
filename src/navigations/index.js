@@ -18,7 +18,7 @@ import AddTransaction from '../screens/transactions/add-transaction';
 import Splash from '../screens/splash';
 import GetStarted from '../screens/auth';
 import Login from '../screens/auth/login';
-import AddCard from '../screens/cardnav/add-card';
+import AddCard from '../screens/cards/add-card';
 
 const Stack = createStackNavigator();
 const Tab = createMaterialBottomTabNavigator();
@@ -26,17 +26,18 @@ const Tab = createMaterialBottomTabNavigator();
 // Bottom Tab Bar Navigatormaly.io
 
 function MyTabs() {
-    return (
-        <Tab.Navigator
-            initialRouteName={routes.Home}
-            activeColor={Colors.PRIMARY}
-            inactiveColor={Colors.BLUE_DARK}
-            barStyle={[Typography.BODY, { backgroundColor: Colors.MAIN, borderTopWidth: 0.5, borderTopColor: Colors.Primary}]}>
+  return (
+    <Tab.Navigator
+        initialRouteName={routes.Home}
+        activeColor={Colors.PRIMARY}
+        inactiveColor={Colors.Black}
+        shifting={true}
+        barStyle={[Typography.BODY, { backgroundColor: Colors.WHITE, borderTopWidth: 10, borderTopColor: Colors.WHITE}]}>
             <Tab.Screen 
                 name={routes.Home} 
                 component={Home}
                 options={{
-                    tabBarLabel: <Text style={[Typography.TAGLINE, {color: Colors.BLUE_DARK}]}>{routes.Home}</Text>,
+                    tabBarLabel: <Text style={[Typography.TAGLINE, {color: Colors.PRIMARY}]}>{routes.Home}</Text>,
                     tabBarIcon: ({ color }) => (
                         <Icon name="home" color={color} size={23} />
                     ),
@@ -45,7 +46,7 @@ function MyTabs() {
                 name={routes.Transactions} 
                 component={Transactions}
                 options={{
-                    tabBarLabel: <Text style={[Typography.TAGLINE, {color: Colors.BLUE_DARK}]}>{routes.Transactions}</Text>,
+                    tabBarLabel: <Text style={[Typography.TAGLINE, {color: Colors.PRIMARY}]}>{routes.Transactions}</Text>,
                     tabBarIcon: ({ color }) => (
                         <Icon name="repeat" color={color} size={23} />
                     ),
@@ -54,7 +55,7 @@ function MyTabs() {
                 name={routes.Settings} 
                 component={Settings}
                 options={{
-                    tabBarLabel: <Text style={[Typography.TAGLINE, {color: Colors.BLUE_DARK}]}>{routes.Settings}</Text>,
+                    tabBarLabel: <Text style={[Typography.TAGLINE, {color: Colors.PRIMARY}]}>{routes.Settings}</Text>,
                     tabBarIcon: ({ color }) => (
                         <Icon name="settings" color={color} size={23} />
                     ),

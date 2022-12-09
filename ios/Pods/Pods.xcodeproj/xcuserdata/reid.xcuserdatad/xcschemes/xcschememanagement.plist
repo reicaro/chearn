@@ -4,6 +4,11 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
+		<key>@mauron85_react-native-background-geolocation.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
 		<key>BVLinearGradient.xcscheme</key>
 		<dict>
 			<key>isShown</key>
@@ -79,6 +84,11 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
+		<key>Permission-Camera.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
 		<key>Pods-Chearner-ChearnerTests.xcscheme</key>
 		<dict>
 			<key>isShown</key>
@@ -119,12 +129,27 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
+		<key>RNCardScanner-PortraitFrame.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
+		<key>RNCardScanner.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
 		<key>RNDateTimePicker.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>
 		</dict>
 		<key>RNGestureHandler.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
+		<key>RNPermissions.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>

@@ -18,7 +18,7 @@ const BlockHeader = (props) => {
                 <Pressable 
                     style={styles.rowContainer}
                     onPress={props.onPress}>
-                        <Text style={[Typography.TAGLINE, {color: Colors.BLUE_DARK, marginRight: 5}]}>All</Text>
+                        <Text style={[Typography.TAGLINE, {color: props.color, marginRight: 5}]}>All</Text>
                         <Icon name="chevron-right" color={Colors.BLUE_DARK} size={10} />
                 </Pressable>
             : null}
@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: Colors.MAIN
+        backgroundColor: Colors.WHITE
     },
     rowContainer: {
         flexDirection: 'row',

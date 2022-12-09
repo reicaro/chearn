@@ -64,6 +64,8 @@ const Savings = ({navigation}) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        paddingTop: 10,
+        paddingLeft: 20,
         paddingRight: 20,
         backgroundColor: Colors.MAIN
     },

@@ -1,0 +1,94 @@
+Date : 2022-10-31 12:43:05
+Directory : /Users/reid/Desktop/Chearner/src
+Total : 41 files,  161601 codes, 80 comments, 315 blanks, all 161996 lines
+
+Languages
++------------+------------+------------+------------+------------+------------+
+| language   | files      | code       | comment    | blank      | total      |
++------------+------------+------------+------------+------------+------------+
+| JSON       |          2 |     81,445 |          0 |          0 |     81,445 |
+| JavaScript |         38 |     80,104 |         77 |        303 |     80,484 |
+| Python     |          1 |         52 |          3 |         12 |         67 |
++------------+------------+------------+------------+------------+------------+
+
+Directories
++----------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                       | files      | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                          |         41 |    161,601 |         80 |        315 |    161,996 |
+| components                                                                 |         10 |        502 |          1 |         64 |        567 |
+| components/Bar                                                             |          1 |         10 |          0 |          3 |         13 |
+| components/Button                                                          |          1 |         27 |          0 |          5 |         32 |
+| components/Cards                                                           |          3 |        162 |          0 |         20 |        182 |
+| components/Cards/CreditCard                                                |          1 |         64 |          0 |          6 |         70 |
+| components/Cards/ErrorCard                                                 |          1 |         49 |          0 |          7 |         56 |
+| components/Cards/TransactionCard                                           |          1 |         49 |          0 |          7 |         56 |
+| components/Carousel                                                        |          1 |         67 |          0 |          8 |         75 |
+| components/CircularProgress                                                |          1 |         82 |          0 |          6 |         88 |
+| components/Headers                                                         |          3 |        154 |          1 |         22 |        177 |
+| components/Headers/BackHeader                                              |          1 |         58 |          0 |          8 |         66 |
+| components/Headers/BlockHeader                                             |          1 |         38 |          0 |          6 |         44 |
+| components/Headers/HomeHeader                                              |          1 |         58 |          1 |          8 |         67 |
+| config                                                                     |          3 |         26 |          5 |          5 |         36 |
+| context                                                                    |          2 |         80 |          7 |          8 |         95 |
+| dbHelpers                                                                  |          3 |        354 |         17 |         29 |        400 |
+| navigations                                                                |          1 |         88 |          2 |          9 |         99 |
+| screens                                                                    |         11 |     78,807 |         39 |        159 |     79,005 |
+| screens/auth                                                               |          2 |        162 |          5 |         23 |        190 |
+| screens/cards                                                              |          1 |        173 |          4 |         22 |        199 |
+| screens/home                                                               |          2 |        221 |          6 |         23 |        250 |
+| screens/settings                                                           |          1 |        168 |          3 |         20 |        191 |
+| screens/splash                                                             |          1 |         28 |          0 |          5 |         33 |
+| screens/transactions                                                       |          4 |     78,055 |         21 |         66 |     78,142 |
+| scripts                                                                    |          3 |     81,497 |          3 |         12 |     81,512 |
+| styles                                                                     |          3 |         45 |          3 |         13 |         61 |
+| utils                                                                      |          4 |        176 |          3 |         11 |        190 |
++----------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++----------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| filename                                                                   | language   | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| /Users/reid/Desktop/Chearner/src/App.js                                    | JavaScript |         26 |          0 |          5 |         31 |
+| /Users/reid/Desktop/Chearner/src/components/Bar/index.js                   | JavaScript |         10 |          0 |          3 |         13 |
+| /Users/reid/Desktop/Chearner/src/components/Button/index.js                | JavaScript |         27 |          0 |          5 |         32 |
+| /Users/reid/Desktop/Chearner/src/components/Cards/CreditCard/index.js      | JavaScript |         64 |          0 |          6 |         70 |
+| /Users/reid/Desktop/Chearner/src/components/Cards/ErrorCard/index.js       | JavaScript |         49 |          0 |          7 |         56 |
+| /Users/reid/Desktop/Chearner/src/components/Cards/TransactionCard/index.js | JavaScript |         49 |          0 |          7 |         56 |
+| /Users/reid/Desktop/Chearner/src/components/Carousel/index.js              | JavaScript |         67 |          0 |          8 |         75 |
+| /Users/reid/Desktop/Chearner/src/components/CircularProgress/index.js      | JavaScript |         82 |          0 |          6 |         88 |
+| /Users/reid/Desktop/Chearner/src/components/Headers/BackHeader/index.js    | JavaScript |         58 |          0 |          8 |         66 |
+| /Users/reid/Desktop/Chearner/src/components/Headers/BlockHeader/index.js   | JavaScript |         38 |          0 |          6 |         44 |
+| /Users/reid/Desktop/Chearner/src/components/Headers/HomeHeader/index.js    | JavaScript |         58 |          1 |          8 |         67 |
+| /Users/reid/Desktop/Chearner/src/config/axiosInstance.js                   | JavaScript |          7 |          0 |          2 |          9 |
+| /Users/reid/Desktop/Chearner/src/config/env.js                             | JavaScript |          5 |          0 |          1 |          6 |
+| /Users/reid/Desktop/Chearner/src/config/routes.js                          | JavaScript |         14 |          5 |          2 |         21 |
+| /Users/reid/Desktop/Chearner/src/context/AuthContext.js                    | JavaScript |          3 |          0 |          1 |          4 |
+| /Users/reid/Desktop/Chearner/src/context/AuthProvider.js                   | JavaScript |         77 |          7 |          7 |         91 |
+| /Users/reid/Desktop/Chearner/src/dbHelpers/cardcollection.js               | JavaScript |        110 |          5 |         10 |        125 |
+| /Users/reid/Desktop/Chearner/src/dbHelpers/openDB.js                       | JavaScript |         14 |          0 |          2 |         16 |
+| /Users/reid/Desktop/Chearner/src/dbHelpers/transactionHelper.js            | JavaScript |        230 |         12 |         17 |        259 |
+| /Users/reid/Desktop/Chearner/src/navigations/index.js                      | JavaScript |         88 |          2 |          9 |         99 |
+| /Users/reid/Desktop/Chearner/src/screens/auth/index.js                     | JavaScript |         58 |          2 |         11 |         71 |
+| /Users/reid/Desktop/Chearner/src/screens/auth/login.js                     | JavaScript |        104 |          3 |         12 |        119 |
+| /Users/reid/Desktop/Chearner/src/screens/cards/add-card.js                 | JavaScript |        173 |          4 |         22 |        199 |
+| /Users/reid/Desktop/Chearner/src/screens/home/errors.js                    | JavaScript |         35 |          1 |          7 |         43 |
+| /Users/reid/Desktop/Chearner/src/screens/home/index.js                     | JavaScript |        186 |          5 |         16 |        207 |
+| /Users/reid/Desktop/Chearner/src/screens/settings/index.js                 | JavaScript |        168 |          3 |         20 |        191 |
+| /Users/reid/Desktop/Chearner/src/screens/splash/index.js                   | JavaScript |         28 |          0 |          5 |         33 |
+| /Users/reid/Desktop/Chearner/src/screens/transactions/add-transaction.js   | JavaScript |     77,825 |         15 |         31 |     77,871 |
+| /Users/reid/Desktop/Chearner/src/screens/transactions/index.js             | JavaScript |         96 |          2 |         13 |        111 |
+| /Users/reid/Desktop/Chearner/src/screens/transactions/purchases.js         | JavaScript |         67 |          2 |         11 |         80 |
+| /Users/reid/Desktop/Chearner/src/screens/transactions/savings.js           | JavaScript |         67 |          2 |         11 |         80 |
+| /Users/reid/Desktop/Chearner/src/scripts/MMCS.json                         | JSON       |      3,930 |          0 |          0 |      3,930 |
+| /Users/reid/Desktop/Chearner/src/scripts/locate.py                         | Python     |         52 |          3 |         12 |         67 |
+| /Users/reid/Desktop/Chearner/src/scripts/pagekeyfiles.json                 | JSON       |     77,515 |          0 |          0 |     77,515 |
+| /Users/reid/Desktop/Chearner/src/styles/colors.js                          | JavaScript |         12 |          1 |          2 |         15 |
+| /Users/reid/Desktop/Chearner/src/styles/index.js                           | JavaScript |          3 |          0 |          2 |          5 |
+| /Users/reid/Desktop/Chearner/src/styles/typography.js                      | JavaScript |         30 |          2 |          9 |         41 |
+| /Users/reid/Desktop/Chearner/src/utils/card_factoring.js                   | JavaScript |         23 |          0 |          2 |         25 |
+| /Users/reid/Desktop/Chearner/src/utils/categories.js                       | JavaScript |         47 |          0 |          0 |         47 |
+| /Users/reid/Desktop/Chearner/src/utils/currency.js                         | JavaScript |         65 |          3 |          5 |         73 |
+| /Users/reid/Desktop/Chearner/src/utils/quickActions.js                     | JavaScript |         41 |          0 |          4 |         45 |
+| Total                                                                      |            |    161,601 |         80 |        315 |    161,996 |
++----------------------------------------------------------------------------+------------+------------+------------+------------+------------+

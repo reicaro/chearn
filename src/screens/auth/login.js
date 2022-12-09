@@ -77,9 +77,12 @@ const Login = ({navigation}) => {
 
             {/* Footer */}
             <View style={styles.footerContainer}>
-                <Button 
-                    title='Login'
-                    onPress={() => __login()} />
+            <TouchableOpacity style={[Typography.H1, {padding: 20,
+                marginTop: 20,
+                borderRadius: 10,
+                alignItems: 'center',backgroundColor: Colors.PRIMARY}]} onPress={() => __login()}>
+                <Text style={[Typography.H1, {textAlign: 'center', color: Colors.WHITE}]}>Login</Text>
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -88,7 +91,7 @@ const Login = ({navigation}) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.MAIN
+        backgroundColor: Colors.WHITE
     },
     // Body
     bodyContainer: {
@@ -108,7 +111,7 @@ const styles = StyleSheet.create({
     },
     // Footer
     footerContainer: {
-        padding: 20,
+        padding: 30,
     },
 });
  

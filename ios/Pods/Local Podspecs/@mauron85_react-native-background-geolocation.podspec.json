@@ -1,0 +1,21 @@
+{
+  "name": "@mauron85_react-native-background-geolocation",
+  "version": "0.6.3",
+  "summary": "optimized background location tracking",
+  "license": "Apache-2.0",
+  "authors": "Marian Hello",
+  "homepage": "https://github.com/mauron85/react-native-background-geolocation#readme",
+  "platforms": {
+    "ios": "9.0"
+  },
+  "source": {
+    "path": "ios"
+  },
+  "source_files": "ios/**/*.{h,m}",
+  "exclude_files": "ios/common/BackgroundGeolocationTests/*.{h,m}",
+  "dependencies": {
+    "React": [
+
+    ]
+  }
+}

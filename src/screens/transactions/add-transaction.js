@@ -29,10 +29,7 @@ import { OpenAI } from 'openai-api';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 //Waiting for approval, for now it has to be an env variable
-const apiKey = process.env.OPEN_AI_KEY;
-
-import {request, Camera} from 'react-native-permissions';
-// import { useContext } from 'react/cjs/react.production.min';
+const apiKey = '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';
 
 const Open = require('openai-api');
 
@@ -174,8 +171,8 @@ const AddTransaction = ({navigation, route}) => {
                 }
             }
         }
-        await delay(3000);
-        console.log("Waited 3s");
+        await delay(1000);
+        console.log("Waited 1s");
         setCardInfo(['No Benefits Apply', 'N/a']);
     }
 
@@ -201,7 +198,7 @@ const AddTransaction = ({navigation, route}) => {
                 {/* Amount */}
                 <View style={styles.inputContainer}>
                     <Text style={[Typography.TAGLINE, {color: Colors.BLUE_DARK}]}>Place</Text>
-                    <TouchableOpacity style={{}} onPress={() => setPropertiesListVisible(true)}>
+                    <TouchableOpacity style={{borderRadius: 50}} onPress={() => setPropertiesListVisible(true)}>
                         <Text style={[styles.input, Typography.BODY, {paddingVertical: 16}]}>{place} {isPropertyLoading && <ActivityIndicator size="small" color={Colors.PRIMARY} />}</Text>
                     </TouchableOpacity>
 
@@ -277,7 +274,7 @@ const AddTransaction = ({navigation, route}) => {
                     <FlatList
                         data={properties}
                         renderItem={({item}) => (
-                            <TouchableOpacity style={styles.input} onPress={() => {setPlace(item.name); setPropertiesListVisible(false)}}>
+                            <TouchableOpacity style={styles.input} onPress={() => {setPlace(item.name); setPropertiesListVisible(false); __compute(item.name)}}>
                                 <Text style={[Typography.BODY, {color: Colors.BLUE_DARK}]}>{item.name}</Text>
                             </TouchableOpacity>
                         )}
@@ -309,7 +306,9 @@ const styles = StyleSheet.create({
     },
 
     inputContainer: {
-        marginBottom: 20,
+        marginTop: 15,
+        marginBottom: 10,
+        borderRadius: 10
     },
     input: {
         padding: 10,

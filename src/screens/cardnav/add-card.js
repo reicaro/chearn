@@ -98,8 +98,6 @@ const AddCard = ({navigation, route}) => {
 
             {/* Body */}
             <ScrollView style={styles.bodyContainer} showsVerticalScrollIndicator={false}>
-                {/* Title */}
-                <Text style={[Typography.H1, {color: Colors.BLUE_DARK}]}>Scan Card Coming Soon</Text>
                 {/* Spacer */}
                 <View style={styles.spacer}>
 

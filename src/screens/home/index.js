@@ -17,7 +17,6 @@ import { getCurrency } from '../../utils/currency';
 import { getInfo, storeInfo } from '../../utils/card_factoring';
 import { getTransactions, getTotalPurchases, getTotalSavings, deleteTransaction } from '../../dbHelpers/transactionHelper';
 import { addCard, getCards } from '../../dbHelpers/cardcollection';
-import LinearGradient from 'react-native-linear-gradient'
 
 import QuickActions from '../../utils/quickActions';
 import CreditCard from '../../components/Cards/CreditCard';
@@ -98,12 +97,14 @@ const Home = ({navigation}) => {
                     ListHeaderComponent={() => {
                         return(
                             <View>
+                                <View style={{padding: 15}}>
+                                </View>
                                 <SwipeableFlatList
-                                    style={{paddingLeft: 20}}
                                     data={cards}
                                     maxSwipeDistance={140}
                                     horizontal={true}
                                     shouldBounceOnMount={true}
+                                    showsIndicators={false}
                                     showsVerticalScrollIndicator={false}
                                     keyExtractor={(item, index) => index.toString()}
                                     ListHeaderComponent={() => {
@@ -125,14 +126,12 @@ const Home = ({navigation}) => {
                                                         onPress={() => {}}
                                                     />
                                                     
-                                                    </View>
-                                                
+                                                    </View>               
                                     }}
                                 />
-                                <View style={{paddingLeft: 20}}>
-                                    <BlockHeader
-                                        title='Activity'
-                                        onPress={() => navigation.navigate(routes.Transactions)} />
+                                <View>
+                                    <Text
+                                        style={[Typography.H1, {color: Colors.BLUE_DARK}, {marginTop: 20}]}>Activity</Text>
                                 </View>
                             </View>
                         )
@@ -150,8 +149,9 @@ const Home = ({navigation}) => {
                     ListFooterComponent={() => { 
                         return (
                             // Statistics
-                            <View style={{paddingLeft: 20, marginBottom: 20}}>
-                                <BlockHeader title='Analytics' />
+                            <View style={{marginBottom: 20}}>
+                                <Text
+                                        style={[Typography.H1, {color: Colors.BLUE_DARK}, {marginTop: 20}]}>Analytics</Text>
                                 <View style = {styles.wipstyle}>
                                 <Text style={[Typography.H1, {color: Colors.WHITE, textAlign: 'center', marginTop: 80, marginBottom:80}]}>WIP</Text>
                                 </View>
@@ -187,8 +187,8 @@ const styles = StyleSheet.create({
     // Body
     bodyContainer: {
         flex: 1,
-        padding: 20,
-        paddingLeft: 0,
+        paddingRight: 20,
+        paddingLeft: 20,
         paddingBottom: 0,
         backgroundColor: Colors.MAIN
     },
